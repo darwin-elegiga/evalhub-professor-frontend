@@ -1,0 +1,40 @@
+import { NextRequest, NextResponse } from "next/server"
+import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
+import { apiClient } from "@/lib/api-client"
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+    const { points_earned, feedback } = body
+
+    if (USE_MOCK_DATA) {
+      // Find and update the student answer
+      const answerIndex = MOCK_DATA.studentAnswers.findIndex((a) => a.id === id)
+
+      if (answerIndex >= 0) {
+        MOCK_DATA.studentAnswers[answerIndex] = {
+          ...MOCK_DATA.studentAnswers[answerIndex],
+          points_earned,
+          feedback,
+        }
+      }
+
+      return NextResponse.json({
+        answer: MOCK_DATA.studentAnswers[answerIndex],
+      })
+    } else {
+      const response = await apiClient.put(`/grades/answer/${id}`, body)
+      return NextResponse.json(response)
+    }
+  } catch (error) {
+    console.error("Error updating answer grade:", error)
+    return NextResponse.json(
+      { error: "Error updating answer grade" },
+      { status: 500 }
+    )
+  }
+}

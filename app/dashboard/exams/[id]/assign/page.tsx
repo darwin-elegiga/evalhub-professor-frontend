@@ -6,7 +6,7 @@ import { useRouter, useParams } from "next/navigation"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
-import type { Exam, Student } from "@/lib/types"
+import type { Exam, Student, StudentGroup } from "@/lib/types"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AssignExamForm } from "@/components/assign-exam-form"
@@ -20,6 +20,7 @@ export default function AssignExamPage() {
 
   const [exam, setExam] = useState<Exam | null>(null)
   const [students, setStudents] = useState<Student[]>([])
+  const [groups, setGroups] = useState<StudentGroup[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
@@ -40,13 +41,16 @@ export default function AssignExamPage() {
         const foundExam = MOCK_DATA.exams.find((e) => e.id === examId)
         setExam(foundExam || null)
         setStudents(MOCK_DATA.students)
+        setGroups(MOCK_DATA.studentGroups)
       } else {
-        const [examData, studentsData] = await Promise.all([
+        const [examData, studentsData, groupsData] = await Promise.all([
           apiClient.get<Exam>(`${API_CONFIG.ENDPOINTS.EXAMS}/${examId}`),
           apiClient.get<Student[]>(API_CONFIG.ENDPOINTS.STUDENTS),
+          apiClient.get<StudentGroup[]>(API_CONFIG.ENDPOINTS.GROUPS),
         ])
         setExam(examData)
         setStudents(studentsData)
+        setGroups(groupsData)
       }
     } catch (error) {
       console.error("Error loading data:", error)
@@ -102,7 +106,7 @@ export default function AssignExamPage() {
           </p>
         </div>
 
-        <AssignExamForm exam={exam} students={students} />
+        <AssignExamForm exam={exam} students={students} groups={groups} />
       </div>
     </div>
   )

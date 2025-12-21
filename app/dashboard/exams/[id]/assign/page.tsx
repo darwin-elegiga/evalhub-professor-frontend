@@ -69,7 +69,7 @@ export default function AssignExamPage() {
 
   if (!exam) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br">
         <div className="container mx-auto p-6">
           <Button asChild variant="ghost" className="mb-4">
             <Link href="/dashboard/exams">
@@ -86,7 +86,7 @@ export default function AssignExamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-6">
         <Button asChild variant="ghost" className="mb-4">
           <Link href={`/dashboard/exams/${examId}`}>

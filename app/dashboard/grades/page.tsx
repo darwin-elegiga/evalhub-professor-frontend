@@ -6,6 +6,7 @@ import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import { GradesTable } from "@/components/grades-table"
+import type { Grade } from "@/lib/types"
 
 interface AssignmentWithDetails {
   id: string
@@ -20,11 +21,7 @@ interface AssignmentWithDetails {
     id: string
     title: string
   }
-  grade: Array<{
-    percentage: number
-    points_earned: number
-    total_points: number
-  }> | null
+  grade: Grade | null
 }
 
 export default function GradesPage() {
@@ -49,7 +46,7 @@ export default function GradesPage() {
             const exam = MOCK_DATA.exams.find(
               (e) => e.id === assignment.exam_id
             )
-            const grade = MOCK_DATA.grades.filter(
+            const grade = MOCK_DATA.grades.find(
               (g) => g.assignment_id === assignment.id
             )
 
@@ -66,7 +63,7 @@ export default function GradesPage() {
                 id: exam?.id || "",
                 title: exam?.title || "Examen",
               },
-              grade: grade.length > 0 ? grade : null,
+              grade: grade || null,
             }
           })
         setAssignments(assignmentsWithDetails)

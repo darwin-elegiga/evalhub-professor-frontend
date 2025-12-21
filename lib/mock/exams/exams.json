@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "teacher_id": "1",
+    "level_id": "1",
+    "title": "Examen de Física - Cinemática",
+    "description": "Examen sobre movimiento rectilíneo y caída libre",
+    "duration_minutes": 60,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "teacher_id": "1",
+    "level_id": "2",
+    "title": "Examen de Química - Estequiometría",
+    "description": "Cálculos estequiométricos y balanceo de ecuaciones",
+    "duration_minutes": 90,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z"
+  }
+]

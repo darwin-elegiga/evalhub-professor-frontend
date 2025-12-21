@@ -8,6 +8,15 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Eye, CheckCircle, Clock, AlertCircle, XCircle } from "lucide-react"
 import Link from "next/link"
+import type { Grade, FinalGrade } from "@/lib/types"
+
+// Final grade labels for 2-5 scale
+const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string }> = {
+  2: { label: "Reprobado", color: "text-red-600" },
+  3: { label: "Aprobado", color: "text-yellow-600" },
+  4: { label: "Bueno", color: "text-blue-600" },
+  5: { label: "Excelente", color: "text-green-600" },
+}
 
 interface Assignment {
   id: string
@@ -22,11 +31,7 @@ interface Assignment {
     id: string
     title: string
   }
-  grade: Array<{
-    percentage: number
-    points_earned: number
-    total_points: number
-  }> | null
+  grade: Grade | null
 }
 
 interface GradesTableProps {
@@ -142,11 +147,13 @@ export function GradesTable({ assignments }: GradesTableProps) {
                     {assignment.submitted_at ? new Date(assignment.submitted_at).toLocaleDateString() : "No entregado"}
                   </TableCell>
                   <TableCell>
-                    {assignment.grade && assignment.grade.length > 0 ? (
+                    {assignment.grade ? (
                       <div>
-                        <div className="font-medium">{assignment.grade[0].percentage.toFixed(1)}%</div>
-                        <div className="text-sm text-muted-foreground">
-                          {assignment.grade[0].points_earned} / {assignment.grade[0].total_points} pts
+                        <div className={`font-bold text-lg ${FINAL_GRADE_LABELS[assignment.grade.final_grade].color}`}>
+                          {assignment.grade.final_grade}
+                        </div>
+                        <div className={`text-xs ${FINAL_GRADE_LABELS[assignment.grade.final_grade].color}`}>
+                          {FINAL_GRADE_LABELS[assignment.grade.final_grade].label}
                         </div>
                       </div>
                     ) : (

@@ -9,14 +9,16 @@ import { ExamTakingInterface } from "@/components/exam-taking-interface"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle } from "lucide-react"
+import type { StudentAnswer } from "@/lib/types"
+import type { ExamTakingAssignment, ExamQuestion, ExamTokenResponse } from "@/lib/api-types"
 
 export default function ExamPage() {
   const params = useParams()
   const token = params.token as string
 
-  const [assignment, setAssignment] = useState<any>(null)
-  const [questions, setQuestions] = useState<any[]>([])
-  const [existingAnswers, setExistingAnswers] = useState<any[]>([])
+  const [assignment, setAssignment] = useState<ExamTakingAssignment | null>(null)
+  const [questions, setQuestions] = useState<ExamQuestion[]>([])
+  const [existingAnswers, setExistingAnswers] = useState<StudentAnswer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,7 +80,7 @@ export default function ExamPage() {
         )
         setExistingAnswers(answers)
       } else {
-        const data = await apiClient.get(
+        const data = await apiClient.get<ExamTokenResponse>(
           `${API_CONFIG.ENDPOINTS.ASSIGNMENTS_TOKEN}/${token}`
         )
         setAssignment(data.assignment)
@@ -95,7 +97,7 @@ export default function ExamPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
         <Card className="w-full max-w-md">
           <CardContent className="flex h-32 items-center justify-center">
             <p className="text-muted-foreground">Cargando examen...</p>
@@ -107,7 +109,7 @@ export default function ExamPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-red-600">Error</CardTitle>
@@ -125,7 +127,7 @@ export default function ExamPage() {
 
   if (!assignment) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
         <Card className="w-full max-w-md">
           <CardContent className="flex h-32 items-center justify-center">
             <p className="text-muted-foreground">Examen no encontrado</p>
@@ -138,7 +140,7 @@ export default function ExamPage() {
   // Show completion message if exam is already submitted or graded
   if (assignment.status === "submitted" || assignment.status === "graded") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
@@ -178,7 +180,7 @@ export default function ExamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-100">
       <ExamTakingInterface
         assignment={assignment}
         questions={questions}

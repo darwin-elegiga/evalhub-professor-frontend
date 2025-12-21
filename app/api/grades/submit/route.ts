@@ -2,26 +2,31 @@ import { NextRequest, NextResponse } from "next/server"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
+import type { Grade, FinalGrade, GradeRoundingMethod } from "@/lib/types"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { assignment_id, total_points, points_earned, graded_by } = body
+    const { assignment_id, average_score, final_grade, rounding_method, graded_by } = body as {
+      assignment_id: string
+      average_score: number
+      final_grade: FinalGrade
+      rounding_method: GradeRoundingMethod
+      graded_by: string
+    }
 
     if (USE_MOCK_DATA) {
-      const percentage = total_points > 0 ? (points_earned / total_points) * 100 : 0
-
       // Check if grade already exists
       const existingIndex = MOCK_DATA.grades.findIndex(
         (g) => g.assignment_id === assignment_id
       )
 
-      const grade = {
+      const grade: Grade = {
         id: existingIndex >= 0 ? MOCK_DATA.grades[existingIndex].id : crypto.randomUUID(),
         assignment_id,
-        total_points,
-        points_earned,
-        percentage,
+        average_score,
+        final_grade,
+        rounding_method,
         graded_at: new Date().toISOString(),
         graded_by,
       }

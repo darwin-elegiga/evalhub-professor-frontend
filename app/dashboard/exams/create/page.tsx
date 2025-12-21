@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Library,
   Settings,
+  Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +49,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { toast } from "sonner"
+import { ImportDialog } from "@/components/import-dialog"
+import type { ExamExport, QuestionBankExport } from "@/lib/export-import"
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Opción Múltiple",
@@ -80,7 +83,7 @@ const TOPIC_COLORS: Record<string, string> = {
 interface SelectedQuestion {
   id: string
   bankQuestion: BankQuestion
-  points: number
+  weight: number
   order: number
 }
 
@@ -115,6 +118,9 @@ export default function CreateExamPage() {
   const [bankTopicFilter, setBankTopicFilter] = useState("all")
   const [bankDifficultyFilter, setBankDifficultyFilter] = useState("all")
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  // Import dialog
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -174,7 +180,7 @@ export default function CreateExamPage() {
       {
         id: crypto.randomUUID(),
         bankQuestion: question,
-        points: question.default_points,
+        weight: question.weight,
         order: selectedQuestions.length + 1,
       },
     ])
@@ -188,9 +194,9 @@ export default function CreateExamPage() {
     )
   }
 
-  const updateQuestionPoints = (id: string, points: number) => {
+  const updateQuestionWeight = (id: string, weight: number) => {
     setSelectedQuestions(
-      selectedQuestions.map((sq) => (sq.id === id ? { ...sq, points } : sq))
+      selectedQuestions.map((sq) => (sq.id === id ? { ...sq, weight } : sq))
     )
   }
 
@@ -205,7 +211,7 @@ export default function CreateExamPage() {
     setSelectedQuestions(newQuestions.map((sq, idx) => ({ ...sq, order: idx + 1 })))
   }
 
-  const totalPoints = selectedQuestions.reduce((sum, sq) => sum + sq.points, 0)
+  const totalPoints = selectedQuestions.reduce((sum, sq) => sum + sq.weight, 0)
   const estimatedTime = selectedQuestions.reduce(
     (sum, sq) => sum + (sq.bankQuestion.estimated_time_minutes || 0),
     0
@@ -241,7 +247,7 @@ export default function CreateExamPage() {
         },
         questions: selectedQuestions.map((sq) => ({
           bank_question_id: sq.bankQuestion.id,
-          points: sq.points,
+          weight: sq.weight,
           question_order: sq.order,
         })),
       }
@@ -281,6 +287,50 @@ export default function CreateExamPage() {
     }
   }
 
+  const handleImportExam = async (data: ExamExport | QuestionBankExport) => {
+    if (data.type !== "exam") return
+    const importedExam = (data as ExamExport).exam
+
+    // Set basic exam info
+    setTitle(importedExam.title)
+    setDescription(importedExam.description || "")
+    if (importedExam.duration_minutes) {
+      setDurationMinutes(String(importedExam.duration_minutes))
+    }
+
+    // Try to match imported questions with bank questions
+    const matchedQuestions: SelectedQuestion[] = []
+
+    importedExam.questions.forEach((importedQ, index) => {
+      // Try to find a matching bank question by title or content
+      const bankMatch = bankQuestions.find(
+        (bq) =>
+          bq.title === importedQ.title ||
+          bq.content === importedQ.content
+      )
+
+      if (bankMatch) {
+        matchedQuestions.push({
+          id: crypto.randomUUID(),
+          bankQuestion: bankMatch,
+          weight: importedQ.weight,
+          order: index + 1,
+        })
+      }
+    })
+
+    if (matchedQuestions.length > 0) {
+      setSelectedQuestions(matchedQuestions)
+      toast.success(
+        `Examen importado: ${matchedQuestions.length}/${importedExam.questions.length} preguntas encontradas en el banco`
+      )
+    } else {
+      toast.warning(
+        "Examen importado sin preguntas. Las preguntas importadas no coinciden con tu banco de preguntas."
+      )
+    }
+  }
+
   if (loading || loadingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -294,7 +344,7 @@ export default function CreateExamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-6">
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/dashboard">
@@ -310,6 +360,13 @@ export default function CreateExamPage() {
               Selecciona preguntas de tu banco para crear el examen
             </p>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setImportDialogOpen(true)}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Importar JSON
+          </Button>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -562,9 +619,9 @@ export default function CreateExamPage() {
                               type="number"
                               min="1"
                               className="w-20 text-center"
-                              value={sq.points}
+                              value={sq.weight}
                               onChange={(e) =>
-                                updateQuestionPoints(sq.id, Number(e.target.value))
+                                updateQuestionWeight(sq.id, Number(e.target.value))
                               }
                             />
                             <span className="text-sm text-muted-foreground">pts</span>
@@ -734,6 +791,14 @@ export default function CreateExamPage() {
             </div>
           </div>
         </div>
+
+        {/* Import Dialog */}
+        <ImportDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          type="exam"
+          onImport={handleImportExam}
+        />
       </div>
     </div>
   )

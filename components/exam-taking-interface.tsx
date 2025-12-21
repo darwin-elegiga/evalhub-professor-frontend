@@ -19,12 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { ExamEventType, ExamEventSeverity } from "@/lib/types"
+import type { ExamEventType, ExamEventSeverity, StudentAnswer } from "@/lib/types"
+import type { ExamTakingAssignment, ExamQuestion } from "@/lib/api-types"
 
-interface ExamTakingInterfaceProps {
-  assignment: any
-  questions: any[]
-  existingAnswers: any[]
+export interface ExamTakingInterfaceProps {
+  assignment: ExamTakingAssignment
+  questions: ExamQuestion[]
+  existingAnswers: StudentAnswer[]
 }
 
 export function ExamTakingInterface({ assignment, questions, existingAnswers }: ExamTakingInterfaceProps) {
@@ -503,7 +504,7 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
               }}
             >
               <div className="space-y-3">
-                {question.answer_options.map((option: any, index: number) => (
+                {question.answer_options.map((option, index) => (
                   <div key={option.id} className="flex items-start space-x-3 rounded-md border p-4 hover:bg-gray-50">
                     <RadioGroupItem value={option.id} id={option.id} />
                     <Label htmlFor={option.id} className="flex-1 cursor-pointer">

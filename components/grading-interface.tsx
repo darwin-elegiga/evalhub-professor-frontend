@@ -41,21 +41,23 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LatexPreview } from "@/components/latex-preview"
-import type { ExamEvent, ExamEventType, ExamEventSeverity, GradeRoundingMethod, FinalGrade } from "@/lib/types"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import type {
+  ExamEvent,
+  ExamEventType,
+  ExamEventSeverity,
+  GradeRoundingMethod,
+  FinalGrade,
+  Grade,
+  StudentAnswer,
+} from "@/lib/types"
+import type { GradingAssignment, GradingQuestion } from "@/lib/api-types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface GradingInterfaceProps {
-  assignment: any
-  questions: any[]
-  studentAnswers: any[]
-  existingGrade: any
+  assignment: GradingAssignment
+  questions: GradingQuestion[]
+  studentAnswers: StudentAnswer[]
+  existingGrade: Grade | null
   teacherId: string
   examEvents?: ExamEvent[]
 }
@@ -423,11 +425,11 @@ export function GradingInterface({
       )}
 
       <div className="space-y-4">
-        {questions.map((question: any, index: number) => {
+        {questions.map((question, index) => {
           const studentAnswer = getStudentAnswer(question.id)
-          const correctOption = question.answer_options.find((opt: any) => opt.is_correct)
+          const correctOption = question.answer_options.find((opt) => opt.is_correct)
           const selectedOption = studentAnswer?.selected_option_id
-            ? question.answer_options.find((opt: any) => opt.id === studentAnswer.selected_option_id)
+            ? question.answer_options.find((opt) => opt.id === studentAnswer.selected_option_id)
             : null
           const isCorrect = selectedOption?.is_correct || false
 
@@ -457,7 +459,7 @@ export function GradingInterface({
                 {question.answer_options.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Opciones:</Label>
-                    {question.answer_options.map((option: any, optIndex: number) => {
+                    {question.answer_options.map((option, optIndex) => {
                       const isSelected = option.id === studentAnswer?.selected_option_id
                       const isCorrectAnswer = option.is_correct
 

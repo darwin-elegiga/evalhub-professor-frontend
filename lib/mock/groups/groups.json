@@ -1,0 +1,34 @@
+[
+  {
+    "id": "g1",
+    "teacher_id": "1",
+    "name": "TELE2-A",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "g2",
+    "teacher_id": "1",
+    "name": "TELE2-B",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "g3",
+    "teacher_id": "1",
+    "name": "INFO3",
+    "year": 2024,
+    "career": "Ingeniería Informática",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "g4",
+    "teacher_id": "1",
+    "name": "ELEC1",
+    "year": 2024,
+    "career": "Ingeniería Eléctrica",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  }
+]

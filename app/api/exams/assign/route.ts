@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
+import type { StudentExamAssignment } from "@/lib/types"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { exam_id, student_ids } = body
+    const { exam_id, student_ids, exam_assignment_id } = body
 
     if (USE_MOCK_DATA) {
       // Generate mock assignments with magic links
@@ -14,15 +15,16 @@ export async function POST(request: NextRequest) {
         const student = MOCK_DATA.students.find((s) => s.id === studentId)
         const magicToken = crypto.randomUUID().replace(/-/g, "").substring(0, 12)
 
-        const assignment = {
+        const assignment: StudentExamAssignment = {
           id: crypto.randomUUID(),
+          exam_assignment_id: exam_assignment_id || crypto.randomUUID(),
           exam_id,
           student_id: studentId,
           magic_token: magicToken,
           assigned_at: new Date().toISOString(),
           started_at: null,
           submitted_at: null,
-          status: "pending" as const,
+          status: "pending",
         }
 
         // Add to mock data (in memory)

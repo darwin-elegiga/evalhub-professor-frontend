@@ -7,12 +7,13 @@ import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type { Exam, Question, AnswerOption, ExamLevel } from "@/lib/types"
-import { ArrowLeft, Send, Edit, Trash2, Check } from "lucide-react"
+import { ArrowLeft, Send, Edit, Trash2, Check, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { LatexPreview } from "@/components/latex-preview"
 import Link from "next/link"
+import { downloadExam } from "@/lib/export-import"
 
 interface ExamWithDetails extends Exam {
   questions?: (Question & { answer_options: AnswerOption[] })[]
@@ -94,7 +95,7 @@ export default function ExamDetailsPage() {
 
   if (!exam) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gray-100">
         <div className="container mx-auto p-6">
           <Button asChild variant="ghost" className="mb-4">
             <Link href="/dashboard/exams">
@@ -114,8 +115,13 @@ export default function ExamDetailsPage() {
 
   const totalPoints = exam.questions?.reduce((sum, q) => sum + q.points, 0) || 0
 
+  const handleExport = () => {
+    if (!exam || !exam.questions) return
+    downloadExam(exam, exam.questions)
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-6">
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/dashboard/exams">
@@ -134,12 +140,18 @@ export default function ExamDetailsPage() {
               {exam.description || "Sin descripción"}
             </p>
           </div>
-          <Button asChild>
-            <Link href={`/dashboard/exams/${exam.id}/assign`}>
-              <Send className="mr-2 h-4 w-4" />
-              Asignar Examen
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              Exportar JSON
+            </Button>
+            <Button asChild>
+              <Link href={`/dashboard/exams/${exam.id}/assign`}>
+                <Send className="mr-2 h-4 w-4" />
+                Asignar Examen
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="mb-6 grid gap-4 md:grid-cols-3">

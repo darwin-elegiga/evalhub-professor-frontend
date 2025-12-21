@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1",
+    "exam_id": "1",
+    "question_text": "Un objeto se lanza verticalmente hacia arriba con una velocidad inicial de 20 m/s. ¿Cuál es la altura máxima alcanzada?",
+    "question_latex": "v_0 = 20 \\, \\text{m/s}, \\quad g = 10 \\, \\text{m/s}^2",
+    "question_image_url": null,
+    "question_graph_data": null,
+    "question_order": 1,
+    "points": 10,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "exam_id": "1",
+    "question_text": "La ecuación de velocidad de un móvil es:",
+    "question_latex": "v(t) = 5 + 2t",
+    "question_image_url": null,
+    "question_graph_data": null,
+    "question_order": 2,
+    "points": 10,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  }
+]

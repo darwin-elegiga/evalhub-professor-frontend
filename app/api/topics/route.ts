@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       const newTopic: QuestionTopic = {
         id: `topic${Date.now()}`,
         teacher_id: "1",
+        subject_id: body.subject_id || MOCK_DATA.subjects[0]?.id || "",
         name: body.name,
         description: body.description || null,
         color: body.color || "blue",

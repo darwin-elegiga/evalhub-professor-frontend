@@ -1,0 +1,29 @@
+[
+  {
+    "id": "ea1",
+    "exam_id": "1",
+    "group_id": "g1",
+    "title": "Parcial 1 - Cinemática TELE2-A",
+    "assigned_at": "2024-12-13T10:00:00.000Z",
+    "due_date": "2024-12-27T10:00:00.000Z",
+    "created_at": "2024-12-13T10:00:00.000Z"
+  },
+  {
+    "id": "ea2",
+    "exam_id": "2",
+    "group_id": "g3",
+    "title": "Examen Química INFO3",
+    "assigned_at": "2024-12-17T10:00:00.000Z",
+    "due_date": "2025-01-03T10:00:00.000Z",
+    "created_at": "2024-12-17T10:00:00.000Z"
+  },
+  {
+    "id": "ea3",
+    "exam_id": "1",
+    "group_id": null,
+    "title": "Recuperación Cinemática - Sofia Torres",
+    "assigned_at": "2024-12-19T10:00:00.000Z",
+    "due_date": "2024-12-23T10:00:00.000Z",
+    "created_at": "2024-12-19T10:00:00.000Z"
+  }
+]

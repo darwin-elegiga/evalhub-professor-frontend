@@ -1,0 +1,155 @@
+[
+  {
+    "id": "bq1",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "topic_id": "1",
+    "title": "Altura máxima en lanzamiento vertical",
+    "content": "<p>Un objeto se lanza verticalmente hacia arriba con una velocidad inicial de 20 m/s.</p>\n<p><strong>¿Cuál es la altura máxima alcanzada?</strong></p>\n<p>Considera: $g = 10 \\, \\text{m/s}^2$</p>",
+    "question_type": "multiple_choice",
+    "type_config": {
+      "options": [
+        { "id": "opt1", "text": "<p>10 metros ($h = 10 \\, \\text{m}$)</p>", "is_correct": false, "order": 1 },
+        { "id": "opt2", "text": "<p>20 metros ($h = 20 \\, \\text{m}$)</p>", "is_correct": true, "order": 2 },
+        { "id": "opt3", "text": "<p>30 metros ($h = 30 \\, \\text{m}$)</p>", "is_correct": false, "order": 3 },
+        { "id": "opt4", "text": "<p>40 metros ($h = 40 \\, \\text{m}$)</p>", "is_correct": false, "order": 4 }
+      ],
+      "allow_multiple": false,
+      "shuffle_options": true
+    },
+    "difficulty": "easy",
+    "estimated_time_minutes": 3,
+    "tags": ["cinemática", "caída libre", "MRU"],
+    "weight": 1,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z",
+    "times_used": 5,
+    "average_score": 3.8
+  },
+  {
+    "id": "bq2",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "topic_id": "1",
+    "title": "Tipo de movimiento según ecuación",
+    "content": "<p>La ecuación de velocidad de un móvil es:</p>\n<p style=\"text-align: center;\">$v(t) = 5 + 2t$</p>\n<p>¿Qué tipo de movimiento describe esta ecuación?</p>",
+    "question_type": "multiple_choice",
+    "type_config": {
+      "options": [
+        { "id": "opt1", "text": "<p>Movimiento uniforme (MRU)</p>", "is_correct": false, "order": 1 },
+        { "id": "opt2", "text": "<p>Movimiento uniformemente acelerado (MRUA)</p>", "is_correct": true, "order": 2 },
+        { "id": "opt3", "text": "<p>Movimiento armónico simple</p>", "is_correct": false, "order": 3 },
+        { "id": "opt4", "text": "<p>Movimiento circular</p>", "is_correct": false, "order": 4 }
+      ],
+      "allow_multiple": false,
+      "shuffle_options": true
+    },
+    "difficulty": "easy",
+    "estimated_time_minutes": 2,
+    "tags": ["cinemática", "ecuaciones", "MRUA"],
+    "weight": 1,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z",
+    "times_used": 8,
+    "average_score": 4.2
+  },
+  {
+    "id": "bq3",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "topic_id": "1",
+    "title": "Cálculo de velocidad final",
+    "content": "<p>Un automóvil acelera uniformemente desde el reposo a razón de $2 \\, \\text{m/s}^2$ durante 10 segundos.</p>\n<p><strong>Calcula la velocidad final.</strong></p>\n<p><em>Ingresa tu respuesta en m/s</em></p>",
+    "question_type": "numeric",
+    "type_config": {
+      "correct_value": 20,
+      "tolerance": 0.5,
+      "tolerance_type": "absolute",
+      "unit": "m/s",
+      "show_unit_input": false
+    },
+    "difficulty": "medium",
+    "estimated_time_minutes": 4,
+    "tags": ["cinemática", "MRUA", "aceleración"],
+    "weight": 2,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z",
+    "times_used": 3,
+    "average_score": 3.2
+  },
+  {
+    "id": "bq4",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "topic_id": "2",
+    "title": "Segunda Ley de Newton",
+    "content": "<p>Una fuerza de 50 N actúa sobre un objeto de 10 kg inicialmente en reposo.</p>\n<p><strong>¿Cuál es la aceleración del objeto?</strong></p>\n<p>Usa la segunda ley de Newton: $F = ma$</p>",
+    "question_type": "numeric",
+    "type_config": {
+      "correct_value": 5,
+      "tolerance": 0.1,
+      "tolerance_type": "absolute",
+      "unit": "m/s²",
+      "show_unit_input": false
+    },
+    "difficulty": "easy",
+    "estimated_time_minutes": 2,
+    "tags": ["dinámica", "Newton", "fuerza"],
+    "weight": 1,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z",
+    "times_used": 12,
+    "average_score": 4.5
+  },
+  {
+    "id": "bq5",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "topic_id": "3",
+    "title": "Energía cinética",
+    "content": "<p>Un objeto de masa 2 kg se mueve a una velocidad de 10 m/s.</p>\n<p><strong>Calcula su energía cinética.</strong></p>\n<p>Recuerda: $E_k = \\frac{1}{2}mv^2$</p>",
+    "question_type": "multiple_choice",
+    "type_config": {
+      "options": [
+        { "id": "opt1", "text": "<p>20 J</p>", "is_correct": false, "order": 1 },
+        { "id": "opt2", "text": "<p>50 J</p>", "is_correct": false, "order": 2 },
+        { "id": "opt3", "text": "<p>100 J</p>", "is_correct": true, "order": 3 },
+        { "id": "opt4", "text": "<p>200 J</p>", "is_correct": false, "order": 4 }
+      ],
+      "allow_multiple": false,
+      "shuffle_options": true
+    },
+    "difficulty": "easy",
+    "estimated_time_minutes": 3,
+    "tags": ["energía", "cinética", "trabajo"],
+    "weight": 1,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z",
+    "times_used": 7,
+    "average_score": 4.0
+  },
+  {
+    "id": "bq6",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "topic_id": "4",
+    "title": "Frecuencia de onda",
+    "content": "<p>Una onda tiene una longitud de onda de 2 metros y se propaga a 340 m/s.</p>\n<p><strong>¿Cuál es su frecuencia?</strong></p>\n<p>Usa: $v = \\lambda \\cdot f$</p>",
+    "question_type": "numeric",
+    "type_config": {
+      "correct_value": 170,
+      "tolerance": 5,
+      "tolerance_type": "percentage",
+      "unit": "Hz",
+      "show_unit_input": false
+    },
+    "difficulty": "medium",
+    "estimated_time_minutes": 3,
+    "tags": ["ondas", "frecuencia", "longitud de onda"],
+    "weight": 2,
+    "created_at": "2024-01-15T10:00:00.000Z",
+    "updated_at": "2024-01-15T10:00:00.000Z",
+    "times_used": 4,
+    "average_score": 3.3
+  }
+]

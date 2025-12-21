@@ -1,0 +1,11 @@
+[
+  {
+    "id": "1",
+    "assignment_id": "1",
+    "average_score": 3.5,
+    "final_grade": 4,
+    "rounding_method": "ceil",
+    "graded_at": "2024-12-15T12:00:00.000Z",
+    "graded_by": "1"
+  }
+]

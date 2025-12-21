@@ -33,6 +33,16 @@ export interface ExamLevel {
   created_at: string
 }
 
+// Asignatura/Materia (ej: Física, Matemáticas, Química)
+export interface Subject {
+  id: string
+  teacher_id: string
+  name: string
+  description: string | null
+  color: string // Para UI (e.g., "blue", "green", "red")
+  created_at: string
+}
+
 export interface Exam {
   id: string
   teacher_id: string
@@ -186,6 +196,7 @@ export type QuestionDifficulty = "easy" | "medium" | "hard"
 export interface QuestionTopic {
   id: string
   teacher_id: string
+  subject_id: string // Relación con la asignatura
   name: string
   description: string | null
   color: string // Para UI (e.g., "blue", "green", "red")
@@ -253,6 +264,7 @@ export type QuestionConfig =
 export interface BankQuestion {
   id: string
   teacher_id: string
+  subject_id: string | null
   topic_id: string | null
 
   // Contenido
@@ -268,8 +280,8 @@ export interface BankQuestion {
   estimated_time_minutes: number | null
   tags: string[]
 
-  // Puntuación sugerida
-  default_points: number
+  // Peso relativo (1-10) para el cálculo del promedio en exámenes
+  weight: number
 
   // Timestamps
   created_at: string
@@ -277,7 +289,7 @@ export interface BankQuestion {
 
   // Estadísticas (opcionales, calculadas)
   times_used?: number
-  average_score?: number
+  average_score?: number // Promedio de calificaciones (2-5) en usos anteriores
 }
 
 // Pregunta dentro de un examen (referencia a BankQuestion)
@@ -286,7 +298,7 @@ export interface ExamQuestion {
   exam_id: string
   bank_question_id: string
   question_order: number
-  points: number // Puede diferir del default_points
+  weight: number // Peso relativo (puede diferir del weight del banco)
 
   // Configuración específica para este examen
   shuffle_options?: boolean // Override para este examen

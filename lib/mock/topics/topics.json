@@ -1,0 +1,92 @@
+[
+  {
+    "id": "1",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "name": "Cinemática",
+    "description": "Movimiento rectilíneo, caída libre, tiro parabólico",
+    "color": "blue",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "name": "Dinámica",
+    "description": "Leyes de Newton, fuerzas, fricción",
+    "color": "green",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "name": "Energía",
+    "description": "Trabajo, energía cinética y potencial, conservación",
+    "color": "orange",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "4",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "name": "Ondas",
+    "description": "Ondas mecánicas, sonido, luz",
+    "color": "purple",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "5",
+    "teacher_id": "1",
+    "subject_id": "sub1",
+    "name": "Electromagnetismo",
+    "description": "Campos eléctricos, magnéticos, circuitos",
+    "color": "red",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "6",
+    "teacher_id": "1",
+    "subject_id": "sub2",
+    "name": "Álgebra",
+    "description": "Ecuaciones, sistemas, polinomios",
+    "color": "indigo",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "7",
+    "teacher_id": "1",
+    "subject_id": "sub2",
+    "name": "Cálculo",
+    "description": "Derivadas, integrales, límites",
+    "color": "violet",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "8",
+    "teacher_id": "1",
+    "subject_id": "sub2",
+    "name": "Geometría",
+    "description": "Figuras, áreas, volúmenes, trigonometría",
+    "color": "cyan",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "9",
+    "teacher_id": "1",
+    "subject_id": "sub3",
+    "name": "Química Orgánica",
+    "description": "Compuestos del carbono, reacciones orgánicas",
+    "color": "emerald",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "10",
+    "teacher_id": "1",
+    "subject_id": "sub3",
+    "name": "Química Inorgánica",
+    "description": "Elementos, compuestos inorgánicos, tabla periódica",
+    "color": "teal",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  }
+]

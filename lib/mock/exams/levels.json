@@ -1,0 +1,23 @@
+[
+  {
+    "id": "1",
+    "teacher_id": "1",
+    "name": "Básico",
+    "description": "Nivel introductorio de ciencias",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "teacher_id": "1",
+    "name": "Intermedio",
+    "description": "Nivel intermedio con conceptos avanzados",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "teacher_id": "1",
+    "name": "Avanzado",
+    "description": "Nivel avanzado para estudiantes destacados",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  }
+]

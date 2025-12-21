@@ -11,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import type { ExamEvent } from "@/lib/types"
+import type { ExamEvent, StudentAnswer, Grade } from "@/lib/types"
+import type { GradingAssignment, GradingQuestion, GradingDataResponse } from "@/lib/api-types"
 
 export default function GradingPage() {
   const { user, loading } = useAuth()
@@ -19,10 +20,10 @@ export default function GradingPage() {
   const params = useParams()
   const assignmentId = params.id as string
 
-  const [assignment, setAssignment] = useState<any>(null)
-  const [questions, setQuestions] = useState<any[]>([])
-  const [studentAnswers, setStudentAnswers] = useState<any[]>([])
-  const [existingGrade, setExistingGrade] = useState<any>(null)
+  const [assignment, setAssignment] = useState<GradingAssignment | null>(null)
+  const [questions, setQuestions] = useState<GradingQuestion[]>([])
+  const [studentAnswers, setStudentAnswers] = useState<StudentAnswer[]>([])
+  const [existingGrade, setExistingGrade] = useState<Grade | null>(null)
   const [examEvents, setExamEvents] = useState<ExamEvent[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
@@ -53,7 +54,8 @@ export default function GradingPage() {
           )
 
           setAssignment({
-            ...foundAssignment,
+            id: foundAssignment.id,
+            status: foundAssignment.status,
             student: {
               full_name: student?.full_name || "Estudiante",
               email: student?.email || "",
@@ -66,7 +68,7 @@ export default function GradingPage() {
           })
 
           // Get questions with options
-          const examQuestions = MOCK_DATA.questions
+          const examQuestions: GradingQuestion[] = MOCK_DATA.questions
             .filter((q) => q.exam_id === foundAssignment.exam_id)
             .map((q) => ({
               ...q,
@@ -95,7 +97,7 @@ export default function GradingPage() {
           setExamEvents(events)
         }
       } else {
-        const data = await apiClient.get(
+        const data = await apiClient.get<GradingDataResponse>(
           `${API_CONFIG.ENDPOINTS.ASSIGNMENTS}/${assignmentId}/grading`
         )
         setAssignment(data.assignment)
@@ -125,7 +127,7 @@ export default function GradingPage() {
 
   if (!assignment) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gray-100">
         <div className="container mx-auto p-6">
           <Button asChild variant="ghost" className="mb-4">
             <Link href="/dashboard/grades">
@@ -144,7 +146,7 @@ export default function GradingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-6">
         <GradingInterface
           assignment={assignment}

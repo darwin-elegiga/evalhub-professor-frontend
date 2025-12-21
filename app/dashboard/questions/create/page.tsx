@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import type {
+  Subject,
   QuestionTopic,
   QuestionType,
   QuestionDifficulty,
@@ -68,11 +69,12 @@ const DIFFICULTY_OPTIONS: { value: QuestionDifficulty; label: string }[] = [
 const questionSchema = z.object({
   title: z.string().min(1, "El título es requerido"),
   content: z.string().min(1, "El enunciado es requerido"),
+  subject_id: z.string().optional(),
   topic_id: z.string().optional(),
   question_type: z.enum(["multiple_choice", "numeric", "graph_click", "image_hotspot", "open_text"]),
   difficulty: z.enum(["easy", "medium", "hard"]),
   estimated_time_minutes: z.number().min(1).max(120).optional(),
-  default_points: z.number().min(1).max(100),
+  weight: z.number().min(1).max(10), // Peso relativo de la pregunta en el examen
   tags: z.array(z.string()),
 })
 
@@ -87,6 +89,7 @@ interface MultipleChoiceOption {
 export default function CreateQuestionPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [topics, setTopics] = useState<QuestionTopic[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -133,14 +136,17 @@ export default function CreateQuestionPage() {
     defaultValues: {
       title: "",
       content: "",
+      subject_id: "",
       topic_id: "",
       question_type: "multiple_choice",
       difficulty: "medium",
       estimated_time_minutes: 5,
-      default_points: 10,
+      weight: 1,
       tags: [],
     },
   })
+
+  const selectedSubjectId = watch("subject_id")
 
   const questionType = watch("question_type")
 
@@ -159,9 +165,11 @@ export default function CreateQuestionPage() {
   const loadData = async () => {
     try {
       if (USE_MOCK_DATA) {
+        setSubjects(MOCK_DATA.subjects)
         setTopics(MOCK_DATA.topics)
       } else {
         // TODO: Implement real API call
+        setSubjects([])
         setTopics([])
       }
     } catch (error) {
@@ -170,6 +178,11 @@ export default function CreateQuestionPage() {
       setLoadingData(false)
     }
   }
+
+  // Filter topics based on selected subject
+  const filteredTopics = selectedSubjectId
+    ? topics.filter((t) => t.subject_id === selectedSubjectId)
+    : topics
 
   const addMcOption = () => {
     setMcOptions([...mcOptions, { id: crypto.randomUUID(), text: "", is_correct: false }])
@@ -315,7 +328,7 @@ export default function CreateQuestionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-6">
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/dashboard/questions">
@@ -359,17 +372,50 @@ export default function CreateQuestionPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
+                  <Label>Asignatura</Label>
+                  <Controller
+                    name="subject_id"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          // Clear topic when subject changes
+                          setValue("topic_id", "")
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una asignatura" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label>Tema</Label>
                   <Controller
                     name="topic_id"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!selectedSubjectId}
+                      >
                         <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un tema" />
+                          <SelectValue placeholder={selectedSubjectId ? "Selecciona un tema" : "Primero selecciona asignatura"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {topics.map((topic) => (
+                          {filteredTopics.map((topic) => (
                             <SelectItem key={topic.id} value={topic.id}>
                               {topic.name}
                             </SelectItem>
@@ -379,7 +425,9 @@ export default function CreateQuestionPage() {
                     )}
                   />
                 </div>
+              </div>
 
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Dificultad</Label>
                   <Controller
@@ -401,24 +449,25 @@ export default function CreateQuestionPage() {
                     )}
                   />
                 </div>
-              </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="points">Puntos por defecto</Label>
+                  <Label htmlFor="weight">Peso (1-10)</Label>
                   <Controller
-                    name="default_points"
+                    name="weight"
                     control={control}
                     render={({ field }) => (
                       <Input
                         {...field}
                         type="number"
                         min="1"
-                        max="100"
+                        max="10"
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     )}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Peso relativo en el promedio del examen
+                  </p>
                 </div>
 
                 <div className="space-y-2">

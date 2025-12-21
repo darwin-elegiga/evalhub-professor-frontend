@@ -6,7 +6,7 @@ import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type { Exam, ExamAssignment, StudentGroup } from "@/lib/types"
-import { Plus, ChevronRight, Search, X } from "lucide-react"
+import { Plus, ChevronRight, Search, X, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -316,6 +316,24 @@ export default function ExamsPage() {
             )}
           </div>
         )}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button asChild>
+              <Link href="/dashboard/exams/create">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Examen
+              </Link>
+            </Button>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/exams/settings">
+              <Settings className="mr-2 h-4 w-4" />
+              Configuración
+            </Link>
+          </Button>
+        </div>
 
         {/* Empty state */}
         {examAssignments.length === 0 ? (

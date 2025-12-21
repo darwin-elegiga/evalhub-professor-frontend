@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1",
+    "question_id": "1",
+    "option_text": "10 metros",
+    "option_latex": "h = 10 \\, \\text{m}",
+    "option_image_url": null,
+    "is_correct": false,
+    "option_order": 1,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "question_id": "1",
+    "option_text": "20 metros",
+    "option_latex": "h = 20 \\, \\text{m}",
+    "option_image_url": null,
+    "is_correct": true,
+    "option_order": 2,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "question_id": "1",
+    "option_text": "30 metros",
+    "option_latex": "h = 30 \\, \\text{m}",
+    "option_image_url": null,
+    "is_correct": false,
+    "option_order": 3,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "4",
+    "question_id": "2",
+    "option_text": "Movimiento uniforme",
+    "option_latex": null,
+    "option_image_url": null,
+    "is_correct": false,
+    "option_order": 1,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "5",
+    "question_id": "2",
+    "option_text": "Movimiento uniformemente acelerado",
+    "option_latex": null,
+    "option_image_url": null,
+    "is_correct": true,
+    "option_order": 2,
+    "created_at": "2024-01-15T10:00:00.000Z"
+  }
+]

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
+import type { StudentAnswer, QuestionScore } from "@/lib/types"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,14 +15,14 @@ export async function POST(request: NextRequest) {
         (a) => a.assignment_id === assignment_id && a.question_id === question_id
       )
 
-      const answer = {
+      const answer: StudentAnswer = {
         id: existingIndex >= 0 ? MOCK_DATA.studentAnswers[existingIndex].id : crypto.randomUUID(),
         assignment_id,
         question_id,
         selected_option_id: selected_option_id || null,
         answer_text: answer_text || null,
         answer_latex: null,
-        points_earned: 0,
+        score: 2 as QuestionScore, // Default score (minimum)
         feedback: null,
         created_at: new Date().toISOString(),
       }

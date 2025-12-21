@@ -1,0 +1,68 @@
+[
+  {
+    "id": "1",
+    "exam_assignment_id": "ea1",
+    "exam_id": "1",
+    "student_id": "1",
+    "magic_token": "abc123def456",
+    "assigned_at": "2024-12-13T10:00:00.000Z",
+    "started_at": "2024-12-15T10:00:00.000Z",
+    "submitted_at": "2024-12-15T10:45:00.000Z",
+    "status": "graded"
+  },
+  {
+    "id": "2",
+    "exam_assignment_id": "ea1",
+    "exam_id": "1",
+    "student_id": "2",
+    "magic_token": "xyz789uvw012",
+    "assigned_at": "2024-12-13T10:00:00.000Z",
+    "started_at": "2024-12-16T10:00:00.000Z",
+    "submitted_at": "2024-12-16T10:50:00.000Z",
+    "status": "submitted"
+  },
+  {
+    "id": "3",
+    "exam_assignment_id": "ea1",
+    "exam_id": "1",
+    "student_id": "3",
+    "magic_token": "def456ghi789",
+    "assigned_at": "2024-12-13T10:00:00.000Z",
+    "started_at": null,
+    "submitted_at": null,
+    "status": "pending"
+  },
+  {
+    "id": "4",
+    "exam_assignment_id": "ea2",
+    "exam_id": "2",
+    "student_id": "6",
+    "magic_token": "jkl012mno345",
+    "assigned_at": "2024-12-17T10:00:00.000Z",
+    "started_at": "2024-12-18T10:00:00.000Z",
+    "submitted_at": "2024-12-18T11:00:00.000Z",
+    "status": "submitted"
+  },
+  {
+    "id": "5",
+    "exam_assignment_id": "ea2",
+    "exam_id": "2",
+    "student_id": "7",
+    "magic_token": "pqr678stu901",
+    "assigned_at": "2024-12-17T10:00:00.000Z",
+    "started_at": null,
+    "submitted_at": null,
+    "status": "pending"
+  },
+  {
+    "id": "6",
+    "exam_assignment_id": "ea3",
+    "exam_id": "1",
+    "student_id": "8",
+    "magic_token": "vwx234yza567",
+    "assigned_at": "2024-12-19T10:00:00.000Z",
+    "started_at": "2024-12-19T22:00:00.000Z",
+    "submitted_at": "2024-12-19T22:25:00.000Z",
+    "status": "submitted"
+  }
+]

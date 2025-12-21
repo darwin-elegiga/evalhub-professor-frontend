@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
+import type { QuestionScore } from "@/lib/types"
 
 export async function PUT(
   request: NextRequest,
@@ -9,7 +10,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { points_earned, feedback } = body
+    const { score, feedback } = body as { score: QuestionScore; feedback: string | null }
 
     if (USE_MOCK_DATA) {
       // Find and update the student answer
@@ -18,7 +19,7 @@ export async function PUT(
       if (answerIndex >= 0) {
         MOCK_DATA.studentAnswers[answerIndex] = {
           ...MOCK_DATA.studentAnswers[answerIndex],
-          points_earned,
+          score,
           feedback,
         }
       }

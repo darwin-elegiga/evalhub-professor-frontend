@@ -1,0 +1,26 @@
+[
+  {
+    "id": "sub1",
+    "teacher_id": "1",
+    "name": "Física",
+    "description": "Estudio de la materia, energía y sus interacciones",
+    "color": "blue",
+    "created_at": "2024-01-01T10:00:00.000Z"
+  },
+  {
+    "id": "sub2",
+    "teacher_id": "1",
+    "name": "Matemáticas",
+    "description": "Ciencia de los números, cantidades y formas",
+    "color": "purple",
+    "created_at": "2024-01-01T10:00:00.000Z"
+  },
+  {
+    "id": "sub3",
+    "teacher_id": "1",
+    "name": "Química",
+    "description": "Estudio de la composición, estructura y propiedades de la materia",
+    "color": "green",
+    "created_at": "2024-01-01T10:00:00.000Z"
+  }
+]

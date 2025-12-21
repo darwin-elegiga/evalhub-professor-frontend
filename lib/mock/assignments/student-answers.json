@@ -1,0 +1,46 @@
+[
+  {
+    "id": "1",
+    "assignment_id": "2",
+    "question_id": "1",
+    "selected_option_id": "2",
+    "answer_text": null,
+    "answer_latex": null,
+    "score": 4,
+    "feedback": "Buen análisis del movimiento",
+    "created_at": "2024-12-16T10:30:00.000Z"
+  },
+  {
+    "id": "2",
+    "assignment_id": "2",
+    "question_id": "2",
+    "selected_option_id": "5",
+    "answer_text": null,
+    "answer_latex": null,
+    "score": 5,
+    "feedback": null,
+    "created_at": "2024-12-16T10:45:00.000Z"
+  },
+  {
+    "id": "3",
+    "assignment_id": "1",
+    "question_id": "1",
+    "selected_option_id": "1",
+    "answer_text": null,
+    "answer_latex": null,
+    "score": 3,
+    "feedback": "Respuesta parcialmente correcta",
+    "created_at": "2024-12-15T10:20:00.000Z"
+  },
+  {
+    "id": "4",
+    "assignment_id": "1",
+    "question_id": "2",
+    "selected_option_id": "6",
+    "answer_text": null,
+    "answer_latex": null,
+    "score": 4,
+    "feedback": null,
+    "created_at": "2024-12-15T10:40:00.000Z"
+  }
+]

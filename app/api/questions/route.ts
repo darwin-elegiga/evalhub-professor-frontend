@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       const newQuestion: BankQuestion = {
         id: `bq${Date.now()}`,
         teacher_id: "1",
+        subject_id: body.subject_id || null,
         topic_id: body.topic_id || null,
         title: body.title,
         content: body.content,
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
         difficulty: body.difficulty,
         estimated_time_minutes: body.estimated_time_minutes || null,
         tags: body.tags || [],
-        default_points: body.default_points || 1,
+        weight: body.weight || 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         times_used: 0,

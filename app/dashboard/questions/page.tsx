@@ -16,6 +16,8 @@ import {
   Edit,
   Trash2,
   Copy,
+  Download,
+  Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,6 +42,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { downloadQuestions } from "@/lib/export-import"
+import { ImportDialog } from "@/components/import-dialog"
+import type { QuestionBankExport, ExamExport } from "@/lib/export-import"
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Opción Múltiple",
@@ -74,6 +79,7 @@ export default function QuestionBankPage() {
   const [questions, setQuestions] = useState<BankQuestion[]>([])
   const [topics, setTopics] = useState<QuestionTopic[]>([])
   const [loadingData, setLoadingData] = useState(true)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const [search, setSearch] = useState("")
   const [topicFilter, setTopicFilter] = useState<string>("all")
@@ -107,6 +113,30 @@ export default function QuestionBankPage() {
     return topics.find((t) => t.id === id)
   }
 
+  const handleExportAll = () => {
+    if (questions.length === 0) return
+    downloadQuestions(questions, topics)
+  }
+
+  const handleExportFiltered = () => {
+    if (filteredQuestions.length === 0) return
+    downloadQuestions(filteredQuestions, topics, `preguntas-filtradas-${new Date().toISOString().split("T")[0]}`)
+  }
+
+  const handleImport = async (data: QuestionBankExport | ExamExport) => {
+    if (data.type !== "question_bank") return
+
+    const importData = data as QuestionBankExport
+    console.log("Importing questions:", importData.questions.length)
+
+    // In real implementation, this would call the API to save the questions
+    // For now, we'll just show a success message
+    alert(`Se importaron ${importData.questions.length} preguntas correctamente`)
+
+    // Reload data
+    loadData()
+  }
+
   const filteredQuestions = questions.filter((q) => {
     const matchesSearch =
       q.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -134,9 +164,39 @@ export default function QuestionBankPage() {
   return (
     <main className="flex-1 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <p className="text-gray-500">
-          {questions.length} preguntas en tu banco
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-gray-500">
+            {questions.length} preguntas en tu banco
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportDialogOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Importar
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={questions.length === 0}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportAll}>
+                  Exportar todas ({questions.length})
+                </DropdownMenuItem>
+                {filteredQuestions.length !== questions.length && (
+                  <DropdownMenuItem onClick={handleExportFiltered}>
+                    Exportar filtradas ({filteredQuestions.length})
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
           <Card className="border-gray-200 shadow-sm">
             <CardContent className="pt-6">
@@ -252,7 +312,7 @@ export default function QuestionBankPage() {
                               {DIFFICULTY_LABELS[question.difficulty]}
                             </Badge>
                             <Badge variant="secondary">
-                              {question.default_points} pts
+                              {question.weight} pts
                             </Badge>
                             {question.estimated_time_minutes && (
                               <Badge variant="secondary">
@@ -328,6 +388,14 @@ export default function QuestionBankPage() {
             </div>
           )}
         </div>
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        type="questions"
+        onImport={handleImport}
+      />
     </main>
   )
 }

@@ -1,0 +1,210 @@
+[
+  {
+    "id": "ev1",
+    "assignment_id": "1",
+    "event_type": "exam_started",
+    "severity": "info",
+    "timestamp": "2024-12-15T10:00:00.000Z",
+    "details": { "message": "El estudiante inició el examen" }
+  },
+  {
+    "id": "ev2",
+    "assignment_id": "1",
+    "event_type": "tab_hidden",
+    "severity": "warning",
+    "timestamp": "2024-12-15T10:15:00.000Z",
+    "details": { "duration_seconds": 8, "question_index": 1, "message": "Salió de la pestaña brevemente" }
+  },
+  {
+    "id": "ev3",
+    "assignment_id": "1",
+    "event_type": "tab_visible",
+    "severity": "info",
+    "timestamp": "2024-12-15T10:15:08.000Z",
+    "details": { "message": "Volvió a la pestaña" }
+  },
+  {
+    "id": "ev4",
+    "assignment_id": "1",
+    "event_type": "exam_submitted",
+    "severity": "info",
+    "timestamp": "2024-12-15T10:45:00.000Z",
+    "details": { "message": "Examen enviado correctamente" }
+  },
+  {
+    "id": "ev5",
+    "assignment_id": "2",
+    "event_type": "exam_started",
+    "severity": "info",
+    "timestamp": "2024-12-16T10:00:00.000Z",
+    "details": { "message": "El estudiante inició el examen" }
+  },
+  {
+    "id": "ev6",
+    "assignment_id": "2",
+    "event_type": "tab_hidden",
+    "severity": "critical",
+    "timestamp": "2024-12-16T10:05:00.000Z",
+    "details": { "duration_seconds": 45, "question_index": 0, "message": "Salió de la pestaña por tiempo prolongado" }
+  },
+  {
+    "id": "ev7",
+    "assignment_id": "2",
+    "event_type": "tab_visible",
+    "severity": "info",
+    "timestamp": "2024-12-16T10:05:45.000Z",
+    "details": { "message": "Volvió a la pestaña" }
+  },
+  {
+    "id": "ev8",
+    "assignment_id": "2",
+    "event_type": "paste",
+    "severity": "critical",
+    "timestamp": "2024-12-16T10:06:00.000Z",
+    "details": { "pasted_length": 156, "question_index": 0, "message": "Pegó texto de fuente externa" }
+  },
+  {
+    "id": "ev9",
+    "assignment_id": "2",
+    "event_type": "window_blur",
+    "severity": "warning",
+    "timestamp": "2024-12-16T10:20:00.000Z",
+    "details": { "question_index": 1, "message": "La ventana perdió el foco" }
+  },
+  {
+    "id": "ev10",
+    "assignment_id": "2",
+    "event_type": "window_focus",
+    "severity": "info",
+    "timestamp": "2024-12-16T10:20:03.000Z",
+    "details": { "message": "La ventana recuperó el foco" }
+  },
+  {
+    "id": "ev11",
+    "assignment_id": "2",
+    "event_type": "right_click",
+    "severity": "warning",
+    "timestamp": "2024-12-16T10:25:00.000Z",
+    "details": { "question_index": 1, "message": "Intento de abrir menú contextual" }
+  },
+  {
+    "id": "ev12",
+    "assignment_id": "2",
+    "event_type": "keyboard_shortcut",
+    "severity": "warning",
+    "timestamp": "2024-12-16T10:30:00.000Z",
+    "details": { "shortcut_keys": "Ctrl+Shift+I", "question_index": 1, "message": "Atajo de teclado sospechoso detectado" }
+  },
+  {
+    "id": "ev13",
+    "assignment_id": "2",
+    "event_type": "devtools_open",
+    "severity": "critical",
+    "timestamp": "2024-12-16T10:30:00.500Z",
+    "details": { "message": "Posible apertura de herramientas de desarrollo" }
+  },
+  {
+    "id": "ev14",
+    "assignment_id": "2",
+    "event_type": "exam_submitted",
+    "severity": "info",
+    "timestamp": "2024-12-16T10:50:00.000Z",
+    "details": { "message": "Examen enviado correctamente" }
+  },
+  {
+    "id": "ev15",
+    "assignment_id": "4",
+    "event_type": "exam_started",
+    "severity": "info",
+    "timestamp": "2024-12-18T10:00:00.000Z",
+    "details": { "message": "El estudiante inició el examen" }
+  },
+  {
+    "id": "ev16",
+    "assignment_id": "4",
+    "event_type": "connection_lost",
+    "severity": "warning",
+    "timestamp": "2024-12-18T10:10:00.000Z",
+    "details": { "question_index": 0, "message": "Se perdió la conexión a internet" }
+  },
+  {
+    "id": "ev17",
+    "assignment_id": "4",
+    "event_type": "connection_restored",
+    "severity": "info",
+    "timestamp": "2024-12-18T10:12:00.000Z",
+    "details": { "message": "Conexión restaurada" }
+  },
+  {
+    "id": "ev18",
+    "assignment_id": "4",
+    "event_type": "idle_timeout",
+    "severity": "warning",
+    "timestamp": "2024-12-18T10:35:00.000Z",
+    "details": { "idle_duration_seconds": 180, "question_index": 1, "message": "Inactividad prolongada detectada" }
+  },
+  {
+    "id": "ev19",
+    "assignment_id": "4",
+    "event_type": "browser_resize",
+    "severity": "info",
+    "timestamp": "2024-12-18T10:40:00.000Z",
+    "details": { "window_dimensions": { "width": 1024, "height": 768 }, "message": "Cambio de tamaño de ventana" }
+  },
+  {
+    "id": "ev20",
+    "assignment_id": "4",
+    "event_type": "exam_submitted",
+    "severity": "info",
+    "timestamp": "2024-12-18T11:00:00.000Z",
+    "details": { "message": "Examen enviado correctamente" }
+  },
+  {
+    "id": "ev21",
+    "assignment_id": "6",
+    "event_type": "exam_started",
+    "severity": "info",
+    "timestamp": "2024-12-19T22:00:00.000Z",
+    "details": { "message": "El estudiante inició el examen" }
+  },
+  {
+    "id": "ev22",
+    "assignment_id": "6",
+    "event_type": "copy",
+    "severity": "warning",
+    "timestamp": "2024-12-19T22:05:00.000Z",
+    "details": { "question_index": 0, "message": "El estudiante copió texto del examen" }
+  },
+  {
+    "id": "ev23",
+    "assignment_id": "6",
+    "event_type": "print_attempt",
+    "severity": "critical",
+    "timestamp": "2024-12-19T22:08:00.000Z",
+    "details": { "question_index": 0, "message": "Intento de imprimir detectado" }
+  },
+  {
+    "id": "ev24",
+    "assignment_id": "6",
+    "event_type": "fullscreen_exit",
+    "severity": "warning",
+    "timestamp": "2024-12-19T22:15:00.000Z",
+    "details": { "question_index": 1, "message": "Salió del modo pantalla completa" }
+  },
+  {
+    "id": "ev25",
+    "assignment_id": "6",
+    "event_type": "rapid_answers",
+    "severity": "warning",
+    "timestamp": "2024-12-19T22:20:00.000Z",
+    "details": { "answer_time_seconds": 3, "question_index": 1, "message": "Respuesta muy rápida (posible adivinanza)" }
+  },
+  {
+    "id": "ev26",
+    "assignment_id": "6",
+    "event_type": "exam_submitted",
+    "severity": "info",
+    "timestamp": "2024-12-19T22:25:00.000Z",
+    "details": { "message": "Examen enviado correctamente" }
+  }
+]

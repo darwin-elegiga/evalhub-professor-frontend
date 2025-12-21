@@ -1,0 +1,82 @@
+[
+  {
+    "id": "1",
+    "teacher_id": "1",
+    "group_id": "g1",
+    "full_name": "Juan Pérez",
+    "email": "juan.perez@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "teacher_id": "1",
+    "group_id": "g1",
+    "full_name": "Ana Martínez",
+    "email": "ana.martinez@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "teacher_id": "1",
+    "group_id": "g1",
+    "full_name": "Carlos López",
+    "email": "carlos.lopez@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "4",
+    "teacher_id": "1",
+    "group_id": "g2",
+    "full_name": "María González",
+    "email": "maria.gonzalez@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "5",
+    "teacher_id": "1",
+    "group_id": "g2",
+    "full_name": "Pedro Ramírez",
+    "email": "pedro.ramirez@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería en Telecomunicaciones",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "6",
+    "teacher_id": "1",
+    "group_id": "g3",
+    "full_name": "Laura Fernández",
+    "email": "laura.fernandez@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería Informática",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "7",
+    "teacher_id": "1",
+    "group_id": "g3",
+    "full_name": "Diego Morales",
+    "email": "diego.morales@estudiante.com",
+    "year": 2024,
+    "career": "Ingeniería Informática",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "8",
+    "teacher_id": "1",
+    "group_id": null,
+    "full_name": "Sofia Torres",
+    "email": "sofia.torres@estudiante.com",
+    "year": 2023,
+    "career": "Ingeniería Eléctrica",
+    "created_at": "2024-01-15T10:00:00.000Z"
+  }
+]

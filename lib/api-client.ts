@@ -1,5 +1,11 @@
 import { API_CONFIG, ApiError } from "./api-config"
 
+// Helper para acceder a localStorage de forma segura (solo en cliente)
+const getToken = (): string | null => {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("auth_token")
+}
+
 // Helper para hacer fetch con manejo de errores
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`
@@ -8,8 +14,8 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     "Content-Type": "application/json",
   }
 
-  // Agregar token si existe
-  const token = localStorage.getItem("auth_token")
+  // Agregar token si existe (solo en cliente)
+  const token = getToken()
   if (token) {
     defaultHeaders["Authorization"] = `Bearer ${token}`
   }

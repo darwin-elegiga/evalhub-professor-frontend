@@ -17,6 +17,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Helper para acceder a localStorage de forma segura
+const getStorageItem = (key: string): string | null => {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(key)
+}
+
+const setStorageItem = (key: string, value: string): void => {
+  if (typeof window === "undefined") return
+  localStorage.setItem(key, value)
+}
+
+const removeStorageItem = (key: string): void => {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(key)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Teacher | null>(null)
   const [loading, setLoading] = useState(true)
@@ -30,13 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       if (USE_MOCK_DATA) {
         // Modo mock: usar datos simulados
-        const token = localStorage.getItem("auth_token")
+        const token = getStorageItem("auth_token")
         if (token === "mock_token") {
           setUser(MOCK_DATA.teacher)
         }
       } else {
         // Modo real: consultar al backend
-        const token = localStorage.getItem("auth_token")
+        const token = getStorageItem("auth_token")
         if (token) {
           const userData = await apiClient.get<Teacher>(API_CONFIG.ENDPOINTS.ME)
           setUser(userData)
@@ -44,30 +60,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Error checking auth:", error)
-      localStorage.removeItem("auth_token")
+      removeStorageItem("auth_token")
     } finally {
       setLoading(false)
     }
   }
 
   const login = async (email: string, password: string) => {
+    if (USE_MOCK_DATA) {
+      // Modo mock: simular login (siempre exitoso)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      setStorageItem("auth_token", "mock_token")
+      setUser(MOCK_DATA.teacher)
+      router.push("/dashboard")
+      return
+    }
+
+    // Modo real: llamar al backend
     try {
-      if (USE_MOCK_DATA) {
-        // Modo mock: simular login
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        localStorage.setItem("auth_token", "mock_token")
-        setUser(MOCK_DATA.teacher)
-        router.push("/dashboard")
-      } else {
-        // Modo real: llamar al backend
-        const response = await apiClient.post<{ token: string; user: Teacher }>(API_CONFIG.ENDPOINTS.LOGIN, {
-          email,
-          password,
-        })
-        localStorage.setItem("auth_token", response.token)
-        setUser(response.user)
-        router.push("/dashboard")
-      }
+      const response = await apiClient.post<{ token: string; user: Teacher }>(API_CONFIG.ENDPOINTS.LOGIN, {
+        email,
+        password,
+      })
+      setStorageItem("auth_token", response.token)
+      setUser(response.user)
+      router.push("/dashboard")
     } catch (error) {
       console.error("Login error:", error)
       throw error
@@ -75,24 +92,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (email: string, password: string, fullName: string) => {
+    if (USE_MOCK_DATA) {
+      // Modo mock: simular registro (siempre exitoso)
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      setStorageItem("auth_token", "mock_token")
+      setUser({ ...MOCK_DATA.teacher, email, full_name: fullName })
+      router.push("/dashboard")
+      return
+    }
+
+    // Modo real: llamar al backend
     try {
-      if (USE_MOCK_DATA) {
-        // Modo mock: simular registro
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        localStorage.setItem("auth_token", "mock_token")
-        setUser({ ...MOCK_DATA.teacher, email, full_name: fullName })
-        router.push("/dashboard")
-      } else {
-        // Modo real: llamar al backend
-        const response = await apiClient.post<{ token: string; user: Teacher }>(API_CONFIG.ENDPOINTS.REGISTER, {
-          email,
-          password,
-          fullName,
-        })
-        localStorage.setItem("auth_token", response.token)
-        setUser(response.user)
-        router.push("/dashboard")
-      }
+      const response = await apiClient.post<{ token: string; user: Teacher }>(API_CONFIG.ENDPOINTS.REGISTER, {
+        email,
+        password,
+        fullName,
+      })
+      setStorageItem("auth_token", response.token)
+      setUser(response.user)
+      router.push("/dashboard")
     } catch (error) {
       console.error("Register error:", error)
       throw error
@@ -107,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      localStorage.removeItem("auth_token")
+      removeStorageItem("auth_token")
       setUser(null)
       router.push("/")
     }

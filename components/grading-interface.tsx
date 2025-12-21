@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -42,7 +41,15 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LatexPreview } from "@/components/latex-preview"
-import type { ExamEvent, ExamEventType, ExamEventSeverity } from "@/lib/types"
+import type { ExamEvent, ExamEventType, ExamEventSeverity, GradeRoundingMethod, FinalGrade } from "@/lib/types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface GradingInterfaceProps {
   assignment: any
@@ -51,6 +58,22 @@ interface GradingInterfaceProps {
   existingGrade: any
   teacherId: string
   examEvents?: ExamEvent[]
+}
+
+// Score labels for 2-5 scale (same as final grade)
+const SCORE_LABELS: Record<number, { label: string; color: string }> = {
+  2: { label: "Reprobado", color: "text-red-600" },
+  3: { label: "Aprobado", color: "text-yellow-600" },
+  4: { label: "Bueno", color: "text-blue-600" },
+  5: { label: "Excelente", color: "text-green-600" },
+}
+
+// Final grade labels for 2-5 scale
+const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string; bgColor: string }> = {
+  2: { label: "Reprobado", color: "text-red-700", bgColor: "bg-red-100" },
+  3: { label: "Aprobado", color: "text-yellow-700", bgColor: "bg-yellow-100" },
+  4: { label: "Bueno", color: "text-blue-700", bgColor: "bg-blue-100" },
+  5: { label: "Excelente", color: "text-green-700", bgColor: "bg-green-100" },
 }
 
 // Event type configuration
@@ -100,12 +123,15 @@ export function GradingInterface({
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [eventsOpen, setEventsOpen] = useState(false)
-  const [grades, setGrades] = useState<Record<string, { points: number; feedback: string }>>(
+  const [roundingMethod, setRoundingMethod] = useState<GradeRoundingMethod>(
+    existingGrade?.rounding_method || "floor"
+  )
+  const [scores, setScores] = useState<Record<string, { score: 2 | 3 | 4 | 5; feedback: string }>>(
     studentAnswers.reduce(
       (acc, answer) => ({
         ...acc,
         [answer.question_id]: {
-          points: answer.points_earned || 0,
+          score: answer.score || 3,
           feedback: answer.feedback || "",
         },
       }),
@@ -117,8 +143,8 @@ export function GradingInterface({
     return studentAnswers.find((a) => a.question_id === questionId)
   }
 
-  const updateGrade = (questionId: string, field: "points" | "feedback", value: number | string) => {
-    setGrades((prev) => ({
+  const updateScore = (questionId: string, field: "score" | "feedback", value: number | string) => {
+    setScores((prev) => ({
       ...prev,
       [questionId]: {
         ...prev[questionId],
@@ -127,28 +153,42 @@ export function GradingInterface({
     }))
   }
 
-  const calculateTotal = () => {
-    const totalPoints = questions.reduce((sum, q) => sum + q.points, 0)
-    const earnedPoints = Object.values(grades).reduce((sum, g) => sum + g.points, 0)
-    return { totalPoints, earnedPoints }
+  // Calculate average score (2-5 scale)
+  const calculateAverageScore = (): number => {
+    const scoreValues = Object.values(scores).map((s) => s.score)
+    if (scoreValues.length === 0) return 2
+    return scoreValues.reduce((sum, score) => sum + score, 0) / scoreValues.length
   }
+
+  // Calculate final grade (2-5 scale) based on average and rounding method
+  const calculateFinalGrade = (average: number): FinalGrade => {
+    // Apply rounding method: floor rounds down, ceil rounds up
+    const rounded = roundingMethod === "ceil" ? Math.ceil(average) : Math.floor(average)
+
+    // Clamp to 2-5 range
+    if (rounded <= 2) return 2
+    if (rounded >= 5) return 5
+    return rounded as FinalGrade
+  }
+
+  const averageScore = calculateAverageScore()
+  const finalGrade = calculateFinalGrade(averageScore)
+  const finalGradeInfo = FINAL_GRADE_LABELS[finalGrade]
 
   const handleSubmitGrade = async () => {
     setIsLoading(true)
 
     try {
-      const { totalPoints, earnedPoints } = calculateTotal()
-
-      // Update student answers with grades and feedback
-      for (const questionId of Object.keys(grades)) {
+      // Update student answers with scores and feedback
+      for (const questionId of Object.keys(scores)) {
         const answer = getStudentAnswer(questionId)
         if (answer) {
           await fetch(`/api/grades/answer/${answer.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              points_earned: grades[questionId].points,
-              feedback: grades[questionId].feedback,
+              score: scores[questionId].score,
+              feedback: scores[questionId].feedback,
             }),
           })
         }
@@ -160,8 +200,9 @@ export function GradingInterface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assignment_id: assignment.id,
-          total_points: totalPoints,
-          points_earned: earnedPoints,
+          average_score: averageScore,
+          final_grade: finalGrade,
+          rounding_method: roundingMethod,
           graded_by: teacherId,
         }),
       })
@@ -177,9 +218,6 @@ export function GradingInterface({
       setIsLoading(false)
     }
   }
-
-  const { totalPoints, earnedPoints } = calculateTotal()
-  const percentage = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0
 
   return (
     <div className="space-y-6">
@@ -206,26 +244,59 @@ export function GradingInterface({
         <CardHeader>
           <CardTitle>Resumen de Calificación</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div>
-            <div className="text-sm text-muted-foreground">Puntos Obtenidos</div>
-            <div className="text-2xl font-bold">
-              {earnedPoints.toFixed(1)} / {totalPoints.toFixed(1)}
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <div className="text-sm text-muted-foreground">Promedio de Preguntas</div>
+              <div className="text-2xl font-bold">{averageScore.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Escala 2-5</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Calificación Final</div>
+              <div className={`text-3xl font-bold ${finalGradeInfo.color}`}>
+                {finalGrade}
+              </div>
+              <div className={`text-sm font-medium ${finalGradeInfo.color}`}>
+                {finalGradeInfo.label}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Estado</div>
+              <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${finalGradeInfo.bgColor} ${finalGradeInfo.color}`}>
+                {finalGrade >= 3 ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+                {finalGrade >= 3 ? "Aprobado" : "Reprobado"}
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Porcentaje</div>
-            <div className="text-2xl font-bold">{percentage.toFixed(1)}%</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground">Estado</div>
-            <div className="text-2xl font-bold">
-              {percentage >= 70 ? (
-                <span className="text-green-600">Aprobado</span>
-              ) : (
-                <span className="text-red-600">Reprobado</span>
-              )}
-            </div>
+
+          {/* Rounding method selector */}
+          <div className="border-t pt-4">
+            <Label className="text-sm font-medium">Método de Redondeo</Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Elige cómo redondear el promedio a la calificación final (2-5)
+            </p>
+            <RadioGroup
+              value={roundingMethod}
+              onValueChange={(value) => setRoundingMethod(value as GradeRoundingMethod)}
+              className="flex gap-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="floor" id="floor" />
+                <Label htmlFor="floor" className="cursor-pointer">
+                  Por defecto (redondea hacia abajo)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="ceil" id="ceil" />
+                <Label htmlFor="ceil" className="cursor-pointer">
+                  Por exceso (redondea hacia arriba)
+                </Label>
+              </div>
+            </RadioGroup>
           </div>
         </CardContent>
       </Card>
@@ -431,16 +502,32 @@ export function GradingInterface({
 
                 <div className="grid gap-4 border-t pt-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor={`points-${question.id}`}>Puntos Asignados</Label>
-                    <Input
-                      id={`points-${question.id}`}
-                      type="number"
-                      min="0"
-                      max={question.points}
-                      step="0.5"
-                      value={grades[question.id]?.points || 0}
-                      onChange={(e) => updateGrade(question.id, "points", Number.parseFloat(e.target.value) || 0)}
-                    />
+                    <Label>Calificación (2-5)</Label>
+                    <div className="flex gap-1">
+                      {([2, 3, 4, 5] as const).map((value) => {
+                        const scoreInfo = SCORE_LABELS[value]
+                        const isSelected = scores[question.id]?.score === value
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => updateScore(question.id, "score", value)}
+                            className={`flex-1 py-2 px-3 rounded-md border-2 text-sm font-medium transition-all ${
+                              isSelected
+                                ? `${scoreInfo.color} border-current bg-opacity-10`
+                                : "border-gray-200 text-gray-500 hover:border-gray-300"
+                            }`}
+                            style={isSelected ? { backgroundColor: `${scoreInfo.color.replace('text-', '')}10` } : {}}
+                            title={scoreInfo.label}
+                          >
+                            {value}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className={`text-xs ${SCORE_LABELS[scores[question.id]?.score || 3].color}`}>
+                      {SCORE_LABELS[scores[question.id]?.score || 3].label}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`feedback-${question.id}`}>Retroalimentación</Label>
@@ -448,8 +535,8 @@ export function GradingInterface({
                       id={`feedback-${question.id}`}
                       placeholder="Comentarios opcionales..."
                       rows={1}
-                      value={grades[question.id]?.feedback || ""}
-                      onChange={(e) => updateGrade(question.id, "feedback", e.target.value)}
+                      value={scores[question.id]?.feedback || ""}
+                      onChange={(e) => updateScore(question.id, "feedback", e.target.value)}
                     />
                   </div>
                 </div>

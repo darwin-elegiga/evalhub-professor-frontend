@@ -11,7 +11,16 @@ import type {
   Student,
   StudentGroup,
   Grade,
+  FinalGrade,
 } from "@/lib/types"
+
+// Final grade labels for 2-5 scale
+const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string; bgColor: string }> = {
+  2: { label: "Reprobado", color: "text-red-600", bgColor: "bg-red-50" },
+  3: { label: "Aprobado", color: "text-yellow-600", bgColor: "bg-yellow-50" },
+  4: { label: "Bueno", color: "text-blue-600", bgColor: "bg-blue-50" },
+  5: { label: "Excelente", color: "text-green-600", bgColor: "bg-green-50" },
+}
 import {
   ArrowLeft,
   CheckCircle2,
@@ -114,7 +123,7 @@ export default function ExamResultsPage() {
 
         const gradesWithScores = studentAssignments
           .filter((sa) => sa.grade)
-          .map((sa) => sa.grade!.percentage)
+          .map((sa) => sa.grade!.final_grade)
         const averageScore =
           gradesWithScores.length > 0
             ? gradesWithScores.reduce((a, b) => a + b, 0) / gradesWithScores.length
@@ -255,10 +264,10 @@ export default function ExamResultsPage() {
             <CardContent className="pt-4 pb-4">
               <div className="text-2xl font-semibold text-gray-900">
                 {stats.averageScore !== null
-                  ? `${stats.averageScore.toFixed(0)}%`
+                  ? stats.averageScore.toFixed(1)
                   : "—"}
               </div>
-              <div className="text-sm text-gray-500">Promedio</div>
+              <div className="text-sm text-gray-500">Promedio (2-5)</div>
             </CardContent>
           </Card>
         </div>
@@ -322,18 +331,12 @@ export default function ExamResultsPage() {
                     {grade && (
                       <div className="text-right">
                         <div
-                          className={`text-lg font-semibold ${
-                            grade.percentage >= 70
-                              ? "text-green-600"
-                              : grade.percentage >= 50
-                                ? "text-amber-600"
-                                : "text-red-600"
-                          }`}
+                          className={`text-2xl font-bold ${FINAL_GRADE_LABELS[grade.final_grade].color}`}
                         >
-                          {grade.percentage.toFixed(0)}%
+                          {grade.final_grade}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {grade.points_earned}/{grade.total_points} pts
+                        <div className={`text-xs ${FINAL_GRADE_LABELS[grade.final_grade].color}`}>
+                          {FINAL_GRADE_LABELS[grade.final_grade].label}
                         </div>
                       </div>
                     )}

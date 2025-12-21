@@ -19,6 +19,7 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Library,
   Settings,
   Upload,
@@ -45,7 +46,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -118,6 +118,7 @@ export default function CreateExamPage() {
   const [bankTopicFilter, setBankTopicFilter] = useState("all")
   const [bankDifficultyFilter, setBankDifficultyFilter] = useState("all")
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null)
 
   // Import dialog
   const [importDialogOpen, setImportDialogOpen] = useState(false)
@@ -436,7 +437,7 @@ export default function CreateExamPage() {
                 <div>
                   <CardTitle>Preguntas del Examen</CardTitle>
                   <CardDescription>
-                    {selectedQuestions.length} preguntas · {totalPoints} puntos totales
+                    {selectedQuestions.length} preguntas · Peso total: {totalPoints}
                   </CardDescription>
                 </div>
                 <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -446,7 +447,7 @@ export default function CreateExamPage() {
                       Agregar del Banco
                     </Button>
                   </SheetTrigger>
-                  <SheetContent className="w-full sm:max-w-xl">
+                  <SheetContent className="w-full sm:max-w-xl px-6">
                     <SheetHeader>
                       <SheetTitle>Banco de Preguntas</SheetTitle>
                       <SheetDescription>
@@ -454,100 +455,203 @@ export default function CreateExamPage() {
                       </SheetDescription>
                     </SheetHeader>
 
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-4 flex flex-col h-[calc(100vh-180px)]">
                       {/* Filters */}
-                      <div className="space-y-3">
+                      <div className="space-y-3 pb-4">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
-                            placeholder="Buscar..."
+                            placeholder="Buscar por título o tags..."
                             value={bankSearch}
                             onChange={(e) => setBankSearch(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 bg-gray-50 border-gray-200"
                           />
                         </div>
                         <div className="flex gap-2">
                           <Select value={bankTopicFilter} onValueChange={setBankTopicFilter}>
-                            <SelectTrigger className="flex-1">
+                            <SelectTrigger className="flex-1 bg-gray-50 border-gray-200">
                               <SelectValue placeholder="Tema" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">Todos</SelectItem>
+                              <SelectItem value="all">Todos los temas</SelectItem>
                               {topics.map((t) => (
-                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                <SelectItem key={t.id} value={t.id}>
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className={`h-2 w-2 rounded-full ${
+                                        t.color === "blue" ? "bg-blue-500" :
+                                        t.color === "green" ? "bg-green-500" :
+                                        t.color === "orange" ? "bg-orange-500" :
+                                        t.color === "purple" ? "bg-purple-500" :
+                                        t.color === "red" ? "bg-red-500" : "bg-gray-500"
+                                      }`}
+                                    />
+                                    {t.name}
+                                  </span>
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                           <Select value={bankDifficultyFilter} onValueChange={setBankDifficultyFilter}>
-                            <SelectTrigger className="flex-1">
+                            <SelectTrigger className="flex-1 bg-gray-50 border-gray-200">
                               <SelectValue placeholder="Dificultad" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">Todas</SelectItem>
-                              {Object.entries(DIFFICULTY_LABELS).map(([k, v]) => (
-                                <SelectItem key={k} value={k}>{v}</SelectItem>
-                              ))}
+                              <SelectItem value="easy">
+                                <span className="flex items-center gap-2">
+                                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                                  Fácil
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="medium">
+                                <span className="flex items-center gap-2">
+                                  <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                                  Medio
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="hard">
+                                <span className="flex items-center gap-2">
+                                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                                  Difícil
+                                </span>
+                              </SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                        {/* Results count */}
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{availableQuestions.length} preguntas disponibles</span>
+                          {selectedQuestions.length > 0 && (
+                            <span className="text-primary font-medium">
+                              {selectedQuestions.length} seleccionadas
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       <Separator />
 
                       {/* Questions List */}
-                      <ScrollArea className="h-[calc(100vh-300px)]">
-                        <div className="space-y-2 pr-4">
+                      <div className="flex-1 mt-4 overflow-y-auto">
+                        <div className="space-y-1 pr-2">
                           {availableQuestions.length === 0 ? (
-                            <div className="py-8 text-center text-muted-foreground">
-                              {bankQuestions.length === selectedQuestions.length
-                                ? "Todas las preguntas ya están en el examen"
-                                : "No se encontraron preguntas"}
+                            <div className="py-12 text-center">
+                              <Library className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                              <p className="text-muted-foreground text-sm">
+                                {bankQuestions.length === selectedQuestions.length
+                                  ? "Todas las preguntas ya están en el examen"
+                                  : "No se encontraron preguntas"}
+                              </p>
                             </div>
                           ) : (
                             availableQuestions.map((question) => {
                               const topic = getTopicById(question.topic_id)
+                              const isExpanded = expandedQuestionId === question.id
+                              const contentPreview = question.content
+                                .replace(/<[^>]*>/g, " ")
+                                .replace(/\s+/g, " ")
+                                .trim()
+
                               return (
                                 <div
                                   key={question.id}
-                                  className="rounded-md border p-3 hover:bg-gray-50 cursor-pointer"
+                                  className="group border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50 transition-colors"
                                   onClick={() => {
                                     addQuestion(question)
                                     toast.success("Pregunta agregada")
                                   }}
                                 >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <p className="font-medium text-sm">{question.title}</p>
-                                      <div className="mt-1 flex flex-wrap gap-1">
+                                  {/* Collapsed row */}
+                                  <div className="flex items-center gap-2 py-2.5 px-1">
+                                    {/* Expand button */}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setExpandedQuestionId(isExpanded ? null : question.id)
+                                      }}
+                                      className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                                    >
+                                      <ChevronRight
+                                        className={`h-4 w-4 text-gray-400 transition-transform ${
+                                          isExpanded ? "rotate-90" : ""
+                                        }`}
+                                      />
+                                    </button>
+
+                                    {/* Difficulty dot */}
+                                    <div
+                                      className={`h-2 w-2 rounded-full shrink-0 ${
+                                        question.difficulty === "easy" ? "bg-green-500" :
+                                        question.difficulty === "medium" ? "bg-yellow-500" :
+                                        "bg-red-500"
+                                      }`}
+                                      title={DIFFICULTY_LABELS[question.difficulty]}
+                                    />
+
+                                    {/* Title */}
+                                    <span className="flex-1 text-sm text-gray-800 truncate">
+                                      {question.title}
+                                    </span>
+
+                                    {/* Weight */}
+                                    <span className="text-xs text-gray-500 shrink-0" title="Peso relativo">
+                                      ×{question.weight}
+                                    </span>
+
+                                    {/* Add indicator */}
+                                    <div className="p-1 text-gray-400 group-hover:text-primary transition-colors">
+                                      <Plus className="h-4 w-4" />
+                                    </div>
+                                  </div>
+
+                                  {/* Expanded content */}
+                                  {isExpanded && (
+                                    <div
+                                      className="pl-8 pr-2 pb-3 space-y-2"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {/* Content */}
+                                      <p className="text-xs text-gray-600 leading-relaxed">
+                                        {contentPreview.length > 200
+                                          ? `${contentPreview.slice(0, 200)}...`
+                                          : contentPreview}
+                                      </p>
+
+                                      {/* Meta */}
+                                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                                         {topic && (
-                                          <Badge
-                                            variant="secondary"
-                                            className={`text-xs ${TOPIC_COLORS[topic.color] || ""}`}
-                                          >
+                                          <span className="flex items-center gap-1">
+                                            <span
+                                              className={`h-1.5 w-1.5 rounded-full ${
+                                                topic.color === "blue" ? "bg-blue-500" :
+                                                topic.color === "green" ? "bg-green-500" :
+                                                topic.color === "orange" ? "bg-orange-500" :
+                                                topic.color === "purple" ? "bg-purple-500" :
+                                                topic.color === "red" ? "bg-red-500" : "bg-gray-500"
+                                              }`}
+                                            />
                                             {topic.name}
-                                          </Badge>
+                                          </span>
                                         )}
-                                        <Badge variant="outline" className="text-xs">
-                                          {QUESTION_TYPE_LABELS[question.question_type]}
-                                        </Badge>
-                                        <Badge
-                                          variant="secondary"
-                                          className={`text-xs ${DIFFICULTY_COLORS[question.difficulty]}`}
-                                        >
-                                          {DIFFICULTY_LABELS[question.difficulty]}
-                                        </Badge>
+                                        <span>•</span>
+                                        <span>{QUESTION_TYPE_LABELS[question.question_type]}</span>
+                                        {question.estimated_time_minutes && (
+                                          <>
+                                            <span>•</span>
+                                            <span>~{question.estimated_time_minutes} min</span>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
-                                    <Button size="sm" variant="ghost">
-                                      <Plus className="h-4 w-4" />
-                                    </Button>
-                                  </div>
+                                  )}
                                 </div>
                               )
                             })
                           )}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -615,16 +719,18 @@ export default function CreateExamPage() {
                           </div>
 
                           <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">×</span>
                             <Input
                               type="number"
                               min="1"
-                              className="w-20 text-center"
+                              max="10"
+                              className="w-16 text-center"
                               value={sq.weight}
                               onChange={(e) =>
                                 updateQuestionWeight(sq.id, Number(e.target.value))
                               }
+                              title="Peso relativo (1-10)"
                             />
-                            <span className="text-sm text-muted-foreground">pts</span>
                           </div>
 
                           <Button
@@ -755,7 +861,7 @@ export default function CreateExamPage() {
                   <span className="font-medium">{selectedQuestions.length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Puntos totales:</span>
+                  <span className="text-muted-foreground">Peso total:</span>
                   <span className="font-medium">{totalPoints}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -765,7 +871,7 @@ export default function CreateExamPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Mínimo para aprobar:</span>
                   <span className="font-medium">
-                    {Math.ceil((passingPercentage / 100) * totalPoints)} pts
+                    {passingPercentage}%
                   </span>
                 </div>
               </CardContent>

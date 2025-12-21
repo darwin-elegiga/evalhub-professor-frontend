@@ -311,8 +311,8 @@ export default function QuestionBankPage() {
                             >
                               {DIFFICULTY_LABELS[question.difficulty]}
                             </Badge>
-                            <Badge variant="secondary">
-                              {question.weight} pts
+                            <Badge variant="secondary" title="Peso relativo">
+                              ×{question.weight}
                             </Badge>
                             {question.estimated_time_minutes && (
                               <Badge variant="secondary">

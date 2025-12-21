@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -19,6 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { ExamEventType, ExamEventSeverity } from "@/lib/types"
 
 interface ExamTakingInterfaceProps {
   assignment: any
@@ -47,6 +48,242 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasStarted, setHasStarted] = useState(assignment.status === "in_progress")
 
+  // Event tracking refs
+  const tabHiddenTimeRef = useRef<number | null>(null)
+  const lastActivityRef = useRef<number>(Date.now())
+  const lastAnswerTimeRef = useRef<number>(Date.now())
+  const devToolsOpenRef = useRef<boolean>(false)
+
+  // Log event to server
+  const logEvent = useCallback(
+    async (
+      eventType: ExamEventType,
+      severity: ExamEventSeverity,
+      details: Record<string, unknown> = {}
+    ) => {
+      try {
+        await fetch("/api/exam/event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assignment_id: assignment.id,
+            event_type: eventType,
+            severity,
+            timestamp: new Date().toISOString(),
+            details: {
+              ...details,
+              question_index: currentQuestion,
+            },
+          }),
+        })
+      } catch (error) {
+        console.error("[ExamMonitor] Error logging event:", error)
+      }
+    },
+    [assignment.id, currentQuestion]
+  )
+
+  // ============================================
+  // EVENT MONITORING HOOKS
+  // ============================================
+
+  useEffect(() => {
+    if (!hasStarted) return
+
+    // --- Tab Visibility Change ---
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        tabHiddenTimeRef.current = Date.now()
+        logEvent("tab_hidden", "warning", { message: "Salió de la pestaña" })
+      } else {
+        const duration = tabHiddenTimeRef.current
+          ? Math.round((Date.now() - tabHiddenTimeRef.current) / 1000)
+          : 0
+        const severity = duration > 30 ? "critical" : "info"
+        logEvent("tab_visible", severity, {
+          duration_seconds: duration,
+          message: "Volvió a la pestaña",
+        })
+        tabHiddenTimeRef.current = null
+      }
+    }
+
+    // --- Window Focus/Blur ---
+    const handleWindowBlur = () => {
+      logEvent("window_blur", "warning", { message: "La ventana perdió el foco" })
+    }
+
+    const handleWindowFocus = () => {
+      logEvent("window_focus", "info", { message: "La ventana recuperó el foco" })
+    }
+
+    // --- Copy/Cut/Paste Events ---
+    const handleCopy = () => {
+      logEvent("copy", "warning", { message: "El estudiante copió texto del examen" })
+    }
+
+    const handleCut = () => {
+      logEvent("cut", "warning", { message: "El estudiante cortó texto" })
+    }
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const pastedText = e.clipboardData?.getData("text") || ""
+      logEvent("paste", "critical", {
+        pasted_length: pastedText.length,
+        message: "Pegó texto de fuente externa",
+      })
+    }
+
+    // --- Right Click (Context Menu) ---
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+      logEvent("right_click", "warning", { message: "Intento de abrir menú contextual" })
+    }
+
+    // --- Keyboard Shortcuts ---
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Detect suspicious shortcuts
+      const suspiciousShortcuts = [
+        { keys: ["Control", "Shift", "I"], name: "Ctrl+Shift+I" },
+        { keys: ["Control", "Shift", "J"], name: "Ctrl+Shift+J" },
+        { keys: ["Control", "Shift", "C"], name: "Ctrl+Shift+C" },
+        { keys: ["Control", "u"], name: "Ctrl+U" },
+        { keys: ["F12"], name: "F12" },
+        { keys: ["Control", "p"], name: "Ctrl+P" },
+      ]
+
+      for (const shortcut of suspiciousShortcuts) {
+        const isMatch = shortcut.keys.every((key) => {
+          if (key === "Control") return e.ctrlKey
+          if (key === "Shift") return e.shiftKey
+          if (key === "Alt") return e.altKey
+          return e.key === key || e.key.toLowerCase() === key.toLowerCase()
+        })
+
+        if (isMatch) {
+          e.preventDefault()
+          if (shortcut.name === "Ctrl+P") {
+            logEvent("print_attempt", "critical", {
+              shortcut_keys: shortcut.name,
+              message: "Intento de imprimir detectado",
+            })
+          } else {
+            logEvent("keyboard_shortcut", "warning", {
+              shortcut_keys: shortcut.name,
+              message: "Atajo de teclado sospechoso detectado",
+            })
+          }
+          return
+        }
+      }
+    }
+
+    // --- Print Event ---
+    const handleBeforePrint = () => {
+      logEvent("print_attempt", "critical", { message: "Intento de imprimir detectado" })
+    }
+
+    // --- Fullscreen Change ---
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        logEvent("fullscreen_exit", "warning", { message: "Salió del modo pantalla completa" })
+      }
+    }
+
+    // --- Window Resize (detect split screen / window manipulation) ---
+    const handleResize = () => {
+      logEvent("browser_resize", "info", {
+        window_dimensions: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+        message: "Cambio de tamaño de ventana",
+      })
+    }
+
+    // --- Online/Offline Status ---
+    const handleOffline = () => {
+      logEvent("connection_lost", "warning", { message: "Se perdió la conexión a internet" })
+    }
+
+    const handleOnline = () => {
+      logEvent("connection_restored", "info", { message: "Conexión restaurada" })
+    }
+
+    // --- DevTools Detection (basic) ---
+    const detectDevTools = () => {
+      const threshold = 160
+      const isOpen =
+        window.outerWidth - window.innerWidth > threshold ||
+        window.outerHeight - window.innerHeight > threshold
+
+      if (isOpen && !devToolsOpenRef.current) {
+        devToolsOpenRef.current = true
+        logEvent("devtools_open", "critical", {
+          message: "Posible apertura de herramientas de desarrollo",
+        })
+      } else if (!isOpen) {
+        devToolsOpenRef.current = false
+      }
+    }
+
+    // --- Idle Detection ---
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now()
+    }
+
+    const idleCheckInterval = setInterval(() => {
+      const idleDuration = Math.round((Date.now() - lastActivityRef.current) / 1000)
+      if (idleDuration >= 180) {
+        logEvent("idle_timeout", "warning", {
+          idle_duration_seconds: idleDuration,
+          message: "Inactividad prolongada detectada",
+        })
+        lastActivityRef.current = Date.now() // Reset to avoid repeated logs
+      }
+    }, 60000) // Check every minute
+
+    const devToolsInterval = setInterval(detectDevTools, 1000)
+
+    // Attach event listeners
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("blur", handleWindowBlur)
+    window.addEventListener("focus", handleWindowFocus)
+    document.addEventListener("copy", handleCopy)
+    document.addEventListener("cut", handleCut)
+    document.addEventListener("paste", handlePaste)
+    document.addEventListener("contextmenu", handleContextMenu)
+    document.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("beforeprint", handleBeforePrint)
+    document.addEventListener("fullscreenchange", handleFullscreenChange)
+    window.addEventListener("resize", handleResize)
+    window.addEventListener("offline", handleOffline)
+    window.addEventListener("online", handleOnline)
+    document.addEventListener("mousemove", handleActivity)
+    document.addEventListener("keypress", handleActivity)
+
+    // Cleanup
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("blur", handleWindowBlur)
+      window.removeEventListener("focus", handleWindowFocus)
+      document.removeEventListener("copy", handleCopy)
+      document.removeEventListener("cut", handleCut)
+      document.removeEventListener("paste", handlePaste)
+      document.removeEventListener("contextmenu", handleContextMenu)
+      document.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener("beforeprint", handleBeforePrint)
+      document.removeEventListener("fullscreenchange", handleFullscreenChange)
+      window.removeEventListener("resize", handleResize)
+      window.removeEventListener("offline", handleOffline)
+      window.removeEventListener("online", handleOnline)
+      document.removeEventListener("mousemove", handleActivity)
+      document.removeEventListener("keypress", handleActivity)
+      clearInterval(idleCheckInterval)
+      clearInterval(devToolsInterval)
+    }
+  }, [hasStarted, logEvent])
+
   useEffect(() => {
     if (!hasStarted || timeRemaining === null) return
 
@@ -71,6 +308,8 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
         body: JSON.stringify({ assignment_id: assignment.id }),
       })
       setHasStarted(true)
+      // Log exam started event
+      logEvent("exam_started", "info", { message: "El estudiante inició el examen" })
     } catch (error) {
       console.error("[v0] Error starting exam:", error)
       alert("Error al iniciar el examen")
@@ -88,6 +327,16 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
   }
 
   const saveAnswer = async (questionId: string) => {
+    // Check for rapid answers (less than 5 seconds between answers)
+    const timeSinceLastAnswer = Math.round((Date.now() - lastAnswerTimeRef.current) / 1000)
+    if (timeSinceLastAnswer < 5 && hasStarted) {
+      logEvent("rapid_answers", "warning", {
+        answer_time_seconds: timeSinceLastAnswer,
+        message: "Respuesta muy rápida (posible adivinanza)",
+      })
+    }
+    lastAnswerTimeRef.current = Date.now()
+
     try {
       await fetch("/api/exam/answer", {
         method: "POST",
@@ -112,6 +361,9 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
       for (const questionId of Object.keys(answers)) {
         await saveAnswer(questionId)
       }
+
+      // Log exam submitted event
+      await logEvent("exam_submitted", "info", { message: "Examen enviado correctamente" })
 
       // Submit exam
       const response = await fetch("/api/exam/submit", {

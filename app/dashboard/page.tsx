@@ -2,30 +2,29 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { BookOpen, Users, ClipboardList, BarChart3, LogOut, Library } from "lucide-react"
+import {
+  FileText,
+  Users,
+  ClipboardCheck,
+  Clock,
+  Plus,
+  ArrowUpRight,
+} from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 
 export default function DashboardPage() {
-  const { user, loading, logout } = useAuth()
-  const router = useRouter()
+  const { user } = useAuth()
   const [stats, setStats] = useState({
     exams: 0,
     students: 0,
     assignments: 0,
     pending: 0,
   })
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login")
-    }
-  }, [user, loading, router])
+  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -40,7 +39,8 @@ export default function DashboardPage() {
           exams: MOCK_DATA.exams.length,
           students: MOCK_DATA.students.length,
           assignments: MOCK_DATA.assignments.length,
-          pending: MOCK_DATA.assignments.filter((a) => a.status === "submitted").length,
+          pending: MOCK_DATA.assignments.filter((a) => a.status === "submitted")
+            .length,
         })
       } else {
         const [exams, students, assignments] = await Promise.all([
@@ -52,147 +52,162 @@ export default function DashboardPage() {
           exams: exams.length,
           students: students.length,
           assignments: assignments.length,
-          pending: assignments.filter((a: any) => a.status === "submitted").length,
+          pending: assignments.filter((a: any) => a.status === "submitted")
+            .length,
         })
       }
     } catch (error) {
       console.error("Error loading stats:", error)
+    } finally {
+      setTimeout(() => setIsLoaded(true), 50)
     }
   }
 
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center">Cargando...</div>
-  }
+  const metrics = [
+    { label: "Exámenes", value: stats.exams, href: "/dashboard/exams" },
+    { label: "Estudiantes", value: stats.students, href: "/dashboard/students" },
+    { label: "Asignaciones", value: stats.assignments, href: "/dashboard/grades" },
+    { label: "Pendientes", value: stats.pending, href: "/dashboard/grades", alert: stats.pending > 0 },
+  ]
 
-  if (!user) {
-    return null
-  }
+  const navigation = [
+    {
+      title: "Exámenes",
+      description: "Crear, editar y gestionar evaluaciones",
+      href: "/dashboard/exams",
+      icon: FileText,
+    },
+    {
+      title: "Estudiantes",
+      description: "Administrar lista de estudiantes",
+      href: "/dashboard/students",
+      icon: Users,
+    },
+    {
+      title: "Calificaciones",
+      description: "Revisar y calificar entregas",
+      href: "/dashboard/grades",
+      icon: ClipboardCheck,
+    },
+  ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto p-6">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Panel de Control</h1>
-            <p className="text-muted-foreground">Bienvenido, {user.full_name}</p>
+    <main className="flex-1 overflow-auto bg-gray-50/50">
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        {/* Welcome */}
+        <div
+          className={`transition-all duration-300 ease-out ${
+            isLoaded ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <h1 className="text-xl font-medium text-gray-900">
+            Bienvenido, {user?.full_name}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Resumen de tu actividad en la plataforma
+          </p>
+        </div>
+
+          {/* Metrics */}
+          <div
+            className={`mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 sm:grid-cols-4 transition-all duration-300 ease-out ${
+              isLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ transitionDelay: "75ms" }}
+          >
+            {metrics.map((metric) => (
+              <Link
+                key={metric.label}
+                href={metric.href}
+                className="group relative bg-white p-5 transition-colors hover:bg-gray-50"
+              >
+                <dt className="text-xs font-medium text-gray-500">
+                  {metric.label}
+                </dt>
+                <dd
+                  className={`mt-1 text-2xl font-semibold tabular-nums ${
+                    metric.alert ? "text-amber-600" : "text-gray-900"
+                  }`}
+                >
+                  {metric.value}
+                </dd>
+                {metric.alert && (
+                  <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-amber-500" />
+                )}
+              </Link>
+            ))}
           </div>
-          <Button variant="outline" onClick={logout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Cerrar Sesión
-          </Button>
+
+          {/* Alert Banner */}
+          {stats.pending > 0 && (
+            <div
+              className={`mt-6 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 transition-all duration-300 ease-out ${
+                isLoaded ? "opacity-100" : "opacity-0"
+              }`}
+              style={{ transitionDelay: "150ms" }}
+            >
+              <div className="flex items-center gap-3">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <span className="text-sm text-amber-800">
+                  {stats.pending} evaluación{stats.pending > 1 ? "es" : ""} pendiente{stats.pending > 1 ? "s" : ""} de revisión
+                </span>
+              </div>
+              <Button asChild variant="ghost" size="sm" className="text-amber-700 hover:text-amber-800 hover:bg-amber-100">
+                <Link href="/dashboard/grades">
+                  Revisar
+                  <ArrowUpRight className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </div>
+          )}
+
+          {/* Quick Action */}
+          <div
+            className={`mt-8 transition-all duration-300 ease-out ${
+              isLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ transitionDelay: "200ms" }}
+          >
+            <Button asChild>
+              <Link href="/dashboard/exams/create">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Examen
+              </Link>
+            </Button>
+          </div>
+
+          {/* Navigation */}
+          <div
+            className={`mt-10 transition-all duration-300 ease-out ${
+              isLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ transitionDelay: "275ms" }}
+          >
+            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Navegación
+            </h2>
+            <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+              {navigation.map((item) => (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-gray-50"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-500 transition-colors group-hover:bg-gray-200 group-hover:text-gray-700">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-gray-500">{item.description}</p>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-gray-300 transition-colors group-hover:text-gray-500" />
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
-
-        <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Exámenes</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.exams}</div>
-              <p className="text-xs text-muted-foreground">Total de exámenes creados</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Estudiantes</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.students}</div>
-              <p className="text-xs text-muted-foreground">Estudiantes registrados</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Asignaciones</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.assignments}</div>
-              <p className="text-xs text-muted-foreground">Exámenes asignados</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-              <p className="text-xs text-muted-foreground">Por calificar</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Crear Examen</CardTitle>
-              <CardDescription>Crea un nuevo examen con preguntas, ecuaciones e imágenes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link href="/dashboard/exams/create">Nuevo Examen</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Mis Exámenes</CardTitle>
-              <CardDescription>Ve y gestiona todos tus exámenes creados</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline" className="w-full bg-transparent">
-                <Link href="/dashboard/exams">Ver Exámenes</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Library className="h-5 w-5" />
-                Banco de Preguntas
-              </CardTitle>
-              <CardDescription>Crea y organiza preguntas reutilizables por tema y tipo</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline" className="w-full bg-transparent">
-                <Link href="/dashboard/questions">Ver Banco</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestionar Estudiantes</CardTitle>
-              <CardDescription>Administra tu lista de estudiantes y grupos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline" className="w-full bg-transparent">
-                <Link href="/dashboard/students">Ver Estudiantes</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Calificaciones</CardTitle>
-              <CardDescription>Revisa y califica los exámenes de tus estudiantes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild variant="outline" className="w-full bg-transparent">
-                <Link href="/dashboard/grades">Ver Calificaciones</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+    </main>
   )
 }

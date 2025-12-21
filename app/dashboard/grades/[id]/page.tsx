@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import type { ExamEvent } from "@/lib/types"
 
 export default function GradingPage() {
   const { user, loading } = useAuth()
@@ -22,6 +23,7 @@ export default function GradingPage() {
   const [questions, setQuestions] = useState<any[]>([])
   const [studentAnswers, setStudentAnswers] = useState<any[]>([])
   const [existingGrade, setExistingGrade] = useState<any>(null)
+  const [examEvents, setExamEvents] = useState<ExamEvent[]>([])
   const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
@@ -85,6 +87,12 @@ export default function GradingPage() {
             (g) => g.assignment_id === assignmentId
           )
           setExistingGrade(grade || null)
+
+          // Get exam events for this assignment
+          const events = MOCK_DATA.examEvents.filter(
+            (e) => e.assignment_id === assignmentId
+          )
+          setExamEvents(events)
         }
       } else {
         const data = await apiClient.get(
@@ -94,6 +102,7 @@ export default function GradingPage() {
         setQuestions(data.questions)
         setStudentAnswers(data.studentAnswers)
         setExistingGrade(data.existingGrade)
+        setExamEvents(data.examEvents || [])
       }
     } catch (error) {
       console.error("Error loading grading data:", error)
@@ -143,6 +152,7 @@ export default function GradingPage() {
           studentAnswers={studentAnswers}
           existingGrade={existingGrade}
           teacherId={user.id}
+          examEvents={examEvents}
         />
       </div>
     </div>

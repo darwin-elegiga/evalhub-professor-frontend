@@ -2,14 +2,10 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { GradesTable } from "@/components/grades-table"
-import Link from "next/link"
 
 interface AssignmentWithDetails {
   id: string
@@ -32,16 +28,9 @@ interface AssignmentWithDetails {
 }
 
 export default function GradesPage() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
+  const { user } = useAuth()
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([])
   const [loadingAssignments, setLoadingAssignments] = useState(true)
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login")
-    }
-  }, [user, loading, router])
 
   useEffect(() => {
     if (user) {
@@ -52,13 +41,14 @@ export default function GradesPage() {
   const loadAssignments = async () => {
     try {
       if (USE_MOCK_DATA) {
-        // Build assignments with student and exam details
-        const assignmentsWithDetails: AssignmentWithDetails[] = MOCK_DATA.assignments.map(
-          (assignment) => {
+        const assignmentsWithDetails: AssignmentWithDetails[] =
+          MOCK_DATA.assignments.map((assignment) => {
             const student = MOCK_DATA.students.find(
               (s) => s.id === assignment.student_id
             )
-            const exam = MOCK_DATA.exams.find((e) => e.id === assignment.exam_id)
+            const exam = MOCK_DATA.exams.find(
+              (e) => e.id === assignment.exam_id
+            )
             const grade = MOCK_DATA.grades.filter(
               (g) => g.assignment_id === assignment.id
             )
@@ -78,8 +68,7 @@ export default function GradesPage() {
               },
               grade: grade.length > 0 ? grade : null,
             }
-          }
-        )
+          })
         setAssignments(assignmentsWithDetails)
       } else {
         const data = await apiClient.get<AssignmentWithDetails[]>(
@@ -94,37 +83,30 @@ export default function GradesPage() {
     }
   }
 
-  if (loading || loadingAssignments) {
+  if (loadingAssignments) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        Cargando...
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">
+            Cargando calificaciones...
+          </p>
+        </div>
       </div>
     )
   }
 
-  if (!user) {
-    return null
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto p-6">
-        <Button asChild variant="ghost" className="mb-4">
-          <Link href="/dashboard">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Dashboard
-          </Link>
-        </Button>
-
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Calificaciones</h1>
-          <p className="text-muted-foreground">
+    <main className="flex-1 p-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6">
+          <p className="text-gray-500">
             Revisa y califica los exámenes de tus estudiantes
           </p>
         </div>
 
         <GradesTable assignments={assignments} />
       </div>
-    </div>
+    </main>
   )
 }

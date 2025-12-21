@@ -7,10 +7,42 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Save, Check, X } from "lucide-react"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  ArrowLeft,
+  Save,
+  Check,
+  X,
+  Eye,
+  EyeOff,
+  Copy,
+  ClipboardPaste,
+  Scissors,
+  MousePointer,
+  Maximize2,
+  Terminal,
+  Printer,
+  Keyboard,
+  Clock,
+  Zap,
+  Monitor,
+  Wifi,
+  WifiOff,
+  Play,
+  Send,
+  ChevronDown,
+  AlertTriangle,
+  Info,
+  AlertCircle,
+} from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { LatexPreview } from "@/components/latex-preview"
+import type { ExamEvent, ExamEventType, ExamEventSeverity } from "@/lib/types"
 
 interface GradingInterfaceProps {
   assignment: any
@@ -18,6 +50,43 @@ interface GradingInterfaceProps {
   studentAnswers: any[]
   existingGrade: any
   teacherId: string
+  examEvents?: ExamEvent[]
+}
+
+// Event type configuration
+const EVENT_CONFIG: Record<
+  ExamEventType,
+  { icon: typeof Eye; label: string; description: string }
+> = {
+  tab_hidden: { icon: EyeOff, label: "Salió de pestaña", description: "El estudiante cambió de pestaña" },
+  tab_visible: { icon: Eye, label: "Volvió a pestaña", description: "El estudiante regresó a la pestaña" },
+  window_blur: { icon: Monitor, label: "Perdió foco", description: "La ventana perdió el foco" },
+  window_focus: { icon: Monitor, label: "Recuperó foco", description: "La ventana recuperó el foco" },
+  copy: { icon: Copy, label: "Copió texto", description: "El estudiante copió texto del examen" },
+  paste: { icon: ClipboardPaste, label: "Pegó texto", description: "El estudiante pegó texto externo" },
+  cut: { icon: Scissors, label: "Cortó texto", description: "El estudiante cortó texto" },
+  right_click: { icon: MousePointer, label: "Click derecho", description: "Intento de abrir menú contextual" },
+  fullscreen_exit: { icon: Maximize2, label: "Salió fullscreen", description: "Salió del modo pantalla completa" },
+  devtools_open: { icon: Terminal, label: "DevTools", description: "Posible apertura de herramientas de desarrollo" },
+  screenshot_attempt: { icon: Monitor, label: "Captura", description: "Intento de captura de pantalla" },
+  print_attempt: { icon: Printer, label: "Imprimir", description: "Intento de imprimir el examen" },
+  keyboard_shortcut: { icon: Keyboard, label: "Atajo teclado", description: "Atajo de teclado sospechoso" },
+  idle_timeout: { icon: Clock, label: "Inactividad", description: "Inactividad prolongada detectada" },
+  rapid_answers: { icon: Zap, label: "Respuesta rápida", description: "Respuesta muy rápida" },
+  browser_resize: { icon: Monitor, label: "Resize", description: "Cambio de tamaño de ventana" },
+  connection_lost: { icon: WifiOff, label: "Sin conexión", description: "Se perdió la conexión" },
+  connection_restored: { icon: Wifi, label: "Conexión OK", description: "Conexión restaurada" },
+  exam_started: { icon: Play, label: "Inicio", description: "El estudiante inició el examen" },
+  exam_submitted: { icon: Send, label: "Enviado", description: "El estudiante envió el examen" },
+}
+
+const SEVERITY_CONFIG: Record<
+  ExamEventSeverity,
+  { color: string; bgColor: string; icon: typeof Info }
+> = {
+  info: { color: "text-blue-600", bgColor: "bg-blue-50", icon: Info },
+  warning: { color: "text-amber-600", bgColor: "bg-amber-50", icon: AlertTriangle },
+  critical: { color: "text-red-600", bgColor: "bg-red-50", icon: AlertCircle },
 }
 
 export function GradingInterface({
@@ -26,9 +95,11 @@ export function GradingInterface({
   studentAnswers,
   existingGrade,
   teacherId,
+  examEvents = [],
 }: GradingInterfaceProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [eventsOpen, setEventsOpen] = useState(false)
   const [grades, setGrades] = useState<Record<string, { points: number; feedback: string }>>(
     studentAnswers.reduce(
       (acc, answer) => ({
@@ -158,6 +229,127 @@ export function GradingInterface({
           </div>
         </CardContent>
       </Card>
+
+      {/* Exam Events / Activity Log */}
+      {examEvents.length > 0 && (
+        <Card className="border-gray-200">
+          <Collapsible open={eventsOpen} onOpenChange={setEventsOpen}>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-base font-medium">
+                      Registro de Actividad
+                    </CardTitle>
+                    {/* Event summary badges */}
+                    <div className="flex gap-1.5">
+                      {(() => {
+                        const criticalCount = examEvents.filter(e => e.severity === "critical").length
+                        const warningCount = examEvents.filter(e => e.severity === "warning").length
+                        return (
+                          <>
+                            {criticalCount > 0 && (
+                              <Badge className="bg-red-100 text-red-700 hover:bg-red-100 gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {criticalCount}
+                              </Badge>
+                            )}
+                            {warningCount > 0 && (
+                              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                {warningCount}
+                              </Badge>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                  <ChevronDown
+                    className={`h-5 w-5 text-gray-400 transition-transform ${
+                      eventsOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </div>
+                <CardDescription>
+                  {examEvents.length} eventos registrados durante el examen
+                </CardDescription>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {examEvents
+                    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                    .map((event) => {
+                      const config = EVENT_CONFIG[event.event_type]
+                      const severityConfig = SEVERITY_CONFIG[event.severity]
+                      const EventIcon = config.icon
+                      const SeverityIcon = severityConfig.icon
+
+                      return (
+                        <div
+                          key={event.id}
+                          className={`flex items-start gap-3 rounded-lg border p-3 ${severityConfig.bgColor}`}
+                        >
+                          {/* Event Icon */}
+                          <div className={`mt-0.5 ${severityConfig.color}`}>
+                            <EventIcon className="h-4 w-4" />
+                          </div>
+
+                          {/* Event Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium text-sm ${severityConfig.color}`}>
+                                {config.label}
+                              </span>
+                              {event.severity !== "info" && (
+                                <SeverityIcon className={`h-3.5 w-3.5 ${severityConfig.color}`} />
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 mt-0.5">
+                              {event.details.message || config.description}
+                            </p>
+                            {/* Additional details */}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
+                              {event.details.duration_seconds !== undefined && (
+                                <span>Duración: {event.details.duration_seconds}s</span>
+                              )}
+                              {event.details.pasted_length !== undefined && (
+                                <span>Caracteres pegados: {event.details.pasted_length}</span>
+                              )}
+                              {event.details.shortcut_keys && (
+                                <span>Teclas: {event.details.shortcut_keys}</span>
+                              )}
+                              {event.details.idle_duration_seconds !== undefined && (
+                                <span>Inactivo: {event.details.idle_duration_seconds}s</span>
+                              )}
+                              {event.details.answer_time_seconds !== undefined && (
+                                <span>Tiempo respuesta: {event.details.answer_time_seconds}s</span>
+                              )}
+                              {event.details.question_index !== undefined && (
+                                <span>Pregunta: {event.details.question_index + 1}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Timestamp */}
+                          <div className="text-xs text-gray-400 shrink-0">
+                            {new Date(event.timestamp).toLocaleTimeString("es-ES", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      )}
 
       <div className="space-y-4">
         {questions.map((question: any, index: number) => {

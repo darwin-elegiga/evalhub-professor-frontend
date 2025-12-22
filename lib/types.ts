@@ -317,6 +317,16 @@ export interface ExamConfig {
   passing_percentage: number // Porcentaje mínimo para aprobar
 }
 
+// Configuración por defecto de exámenes (obtenida del backend)
+export interface ExamDefaultConfig {
+  shuffle_questions: boolean
+  shuffle_options: boolean
+  show_results_immediately: boolean
+  penalty_enabled: boolean
+  penalty_value: number // Valor de penalización (0-1, ej: 0.25 = 25%)
+  passing_percentage: number // Porcentaje mínimo para aprobar (0-100)
+}
+
 // Examen extendido con la nueva estructura
 export interface ExamWithConfig extends Exam {
   config: ExamConfig

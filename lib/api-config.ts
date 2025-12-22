@@ -54,6 +54,9 @@ export const API_CONFIG = {
 
     // Levels
     LEVELS: "/levels",
+
+    // Config
+    EXAM_DEFAULT_CONFIG: "/config/exam-defaults",
   },
 }
 

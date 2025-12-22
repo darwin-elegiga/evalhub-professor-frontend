@@ -10,6 +10,7 @@ import type {
   QuestionTopic,
   QuestionType,
   QuestionDifficulty,
+  ExamDefaultConfig,
 } from "@/lib/types"
 import {
   ArrowLeft,
@@ -51,6 +52,8 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { ImportDialog } from "@/components/import-dialog"
 import type { ExamExport, QuestionBankExport } from "@/lib/export-import"
+import { apiClient } from "@/lib/api-client"
+import { API_CONFIG } from "@/lib/api-config"
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Opción Múltiple",
@@ -102,7 +105,7 @@ export default function CreateExamPage() {
   const [levelId, setLevelId] = useState("")
   const [durationMinutes, setDurationMinutes] = useState("")
 
-  // Exam config state
+  // Exam config state (valores por defecto como fallback, se actualizan desde el backend)
   const [shuffleQuestions, setShuffleQuestions] = useState(false)
   const [shuffleOptions, setShuffleOptions] = useState(true)
   const [showResultsImmediately, setShowResultsImmediately] = useState(false)
@@ -142,7 +145,21 @@ export default function CreateExamPage() {
         setBankQuestions(MOCK_DATA.bankQuestions)
         setTopics(MOCK_DATA.topics)
       } else {
-        // TODO: Implement real API calls
+        // TODO: Implement real API calls for levels, questions, topics
+      }
+
+      // Cargar configuración por defecto de exámenes desde el backend
+      try {
+        const config = await apiClient.get<ExamDefaultConfig>(API_CONFIG.ENDPOINTS.EXAM_DEFAULT_CONFIG)
+        setShuffleQuestions(config.shuffle_questions)
+        setShuffleOptions(config.shuffle_options)
+        setShowResultsImmediately(config.show_results_immediately)
+        setPenaltyEnabled(config.penalty_enabled)
+        setPenaltyValue(config.penalty_value)
+        setPassingPercentage(config.passing_percentage)
+      } catch (configError) {
+        // Si falla la carga de configuración, se mantienen los valores por defecto
+        console.warn("No se pudo cargar la configuración de exámenes, usando valores por defecto:", configError)
       }
     } catch (error) {
       console.error("Error loading data:", error)

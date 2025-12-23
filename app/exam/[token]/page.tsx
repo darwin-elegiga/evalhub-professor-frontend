@@ -81,7 +81,7 @@ export default function ExamPage() {
         setExistingAnswers(answers)
       } else {
         const data = await apiClient.get<ExamTokenResponse>(
-          `${API_CONFIG.ENDPOINTS.ASSIGNMENTS_TOKEN}/${token}`
+          API_CONFIG.ENDPOINTS.ASSIGNMENT_BY_TOKEN(token)
         )
         setAssignment(data.assignment)
         setQuestions(data.questions)

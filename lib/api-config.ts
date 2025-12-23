@@ -24,7 +24,6 @@ export const API_CONFIG = {
     EXAM_BY_ID: (id: string) => `/exams/${id}`,
     EXAMS_CREATE: "/exams/create",
     EXAMS_ASSIGN: "/exams/assign",
-    ASSIGN_EXAM: "/exams/assign",
 
     // Questions (Bank)
     QUESTIONS: "/questions",
@@ -34,29 +33,33 @@ export const API_CONFIG = {
     TOPICS: "/topics",
     TOPIC_BY_ID: (id: string) => `/topics/${id}`,
 
+    // Subjects
+    SUBJECTS: "/subjects",
+    SUBJECT_BY_ID: (id: string) => `/subjects/${id}`,
+
     // Assignments
     ASSIGNMENTS: "/assignments",
     ASSIGNMENT_BY_ID: (id: string) => `/assignments/${id}`,
-    ASSIGNMENTS_TOKEN: "/assignments/token",
-    EXAM_BY_TOKEN: (token: string) => `/assignments/token/${token}`,
+    ASSIGNMENT_GRADING: (id: string) => `/assignments/${id}/grading`,
+    ASSIGNMENT_BY_TOKEN: (token: string) => `/assignments/token/${token}`,
     ASSIGNMENTS_START: "/assignments/start",
     ASSIGNMENTS_ANSWER: "/assignments/answer",
     ASSIGNMENTS_SUBMIT: "/assignments/submit",
-    START_EXAM: "/assignments/start",
-    SUBMIT_ANSWER: "/assignments/answer",
-    SUBMIT_EXAM: "/assignments/submit",
 
     // Grades
     GRADES: "/grades",
     GRADE_ANSWER: (answerId: string) => `/grades/answer/${answerId}`,
     GRADES_SUBMIT: "/grades/submit",
-    SUBMIT_GRADE: "/grades/submit",
 
     // Levels
     LEVELS: "/levels",
+    LEVEL_BY_ID: (id: string) => `/levels/${id}`,
 
     // Config
     EXAM_DEFAULT_CONFIG: "/config/exam-defaults",
+
+    // Exam Events (Monitoring)
+    EXAM_EVENTS: "/exam/events",
   },
 }
 

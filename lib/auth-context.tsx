@@ -7,31 +7,61 @@ import { apiClient } from "./api-client"
 import { API_CONFIG } from "./api-config"
 import { MOCK_DATA, USE_MOCK_DATA } from "./mock-data"
 
+// Respuesta del backend para login/register
+interface AuthResponse {
+  user: {
+    id: string
+    email: string
+    firstName: string
+    lastName: string
+    isActive: boolean
+    createdAt: string
+  }
+  tokens: {
+    accessToken: string
+    refreshToken: string
+  }
+}
+
 interface AuthContextType {
   user: Teacher | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, fullName: string) => Promise<void>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
+  register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Helper para acceder a localStorage de forma segura
+// Helper para acceder al storage de forma segura
 const getStorageItem = (key: string): string | null => {
   if (typeof window === "undefined") return null
-  return localStorage.getItem(key)
+  // Primero buscar en localStorage, luego en sessionStorage
+  return localStorage.getItem(key) || sessionStorage.getItem(key)
 }
 
-const setStorageItem = (key: string, value: string): void => {
+const setStorageItem = (key: string, value: string, persistent: boolean = true): void => {
   if (typeof window === "undefined") return
-  localStorage.setItem(key, value)
+  if (persistent) {
+    localStorage.setItem(key, value)
+  } else {
+    sessionStorage.setItem(key, value)
+  }
 }
 
 const removeStorageItem = (key: string): void => {
   if (typeof window === "undefined") return
   localStorage.removeItem(key)
+  sessionStorage.removeItem(key)
 }
+
+// Helper para mapear respuesta del backend a Teacher
+const mapAuthResponseToTeacher = (response: AuthResponse): Teacher => ({
+  id: response.user.id,
+  email: response.user.email,
+  full_name: `${response.user.firstName} ${response.user.lastName}`,
+  created_at: response.user.createdAt,
+})
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Teacher | null>(null)
@@ -66,11 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = false) => {
     if (USE_MOCK_DATA) {
       // Modo mock: simular login (siempre exitoso)
       await new Promise((resolve) => setTimeout(resolve, 300))
-      setStorageItem("auth_token", "mock_token")
+      setStorageItem("auth_token", "mock_token", rememberMe)
       setUser(MOCK_DATA.teacher)
       router.push("/dashboard")
       return
@@ -78,12 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Modo real: llamar al backend
     try {
-      const response = await apiClient.post<{ token: string; user: Teacher }>(API_CONFIG.ENDPOINTS.LOGIN, {
+      const response = await apiClient.post<AuthResponse>(API_CONFIG.ENDPOINTS.LOGIN, {
         email,
         password,
       })
-      setStorageItem("auth_token", response.token)
-      setUser(response.user)
+      setStorageItem("auth_token", response.tokens.accessToken, rememberMe)
+      setStorageItem("refresh_token", response.tokens.refreshToken, rememberMe)
+      setUser(mapAuthResponseToTeacher(response))
       router.push("/dashboard")
     } catch (error) {
       console.error("Login error:", error)
@@ -91,25 +122,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const register = async (email: string, password: string, fullName: string) => {
+  const register = async (email: string, password: string, firstName: string, lastName: string) => {
     if (USE_MOCK_DATA) {
       // Modo mock: simular registro (siempre exitoso)
       await new Promise((resolve) => setTimeout(resolve, 300))
       setStorageItem("auth_token", "mock_token")
-      setUser({ ...MOCK_DATA.teacher, email, full_name: fullName })
+      setUser({ ...MOCK_DATA.teacher, email, full_name: `${firstName} ${lastName}` })
       router.push("/dashboard")
       return
     }
 
     // Modo real: llamar al backend
     try {
-      const response = await apiClient.post<{ token: string; user: Teacher }>(API_CONFIG.ENDPOINTS.REGISTER, {
+      const response = await apiClient.post<AuthResponse>(API_CONFIG.ENDPOINTS.REGISTER, {
         email,
         password,
-        fullName,
+        firstName,
+        lastName,
       })
-      setStorageItem("auth_token", response.token)
-      setUser(response.user)
+      setStorageItem("auth_token", response.tokens.accessToken)
+      setStorageItem("refresh_token", response.tokens.refreshToken)
+      setUser(mapAuthResponseToTeacher(response))
       router.push("/dashboard")
     } catch (error) {
       console.error("Register error:", error)
@@ -126,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Logout error:", error)
     } finally {
       removeStorageItem("auth_token")
+      removeStorageItem("refresh_token")
       setUser(null)
       router.push("/")
     }

@@ -3,22 +3,67 @@
 import type React from "react"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { useState } from "react"
+import { ApiError } from "@/lib/api-config"
+import { AlertCircle, Loader2, Eye, EyeOff, CheckCircle2, Circle } from "lucide-react"
+
+// Validación de requisitos de contraseña
+const passwordRequirements = [
+  { key: "length", label: "8-128 caracteres", test: (p: string) => p.length >= 8 && p.length <= 128 },
+  { key: "uppercase", label: "Una mayúscula", test: (p: string) => /[A-Z]/.test(p) },
+  { key: "lowercase", label: "Una minúscula", test: (p: string) => /[a-z]/.test(p) },
+  { key: "number", label: "Un número", test: (p: string) => /[0-9]/.test(p) },
+  { key: "special", label: "Un carácter especial", test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p) },
+]
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof ApiError) {
+    switch (error.status) {
+      case 400:
+        return error.message || "Datos inválidos. Verifica la información."
+      case 409:
+        return "Ya existe una cuenta con este correo electrónico."
+      case 429:
+        return "Demasiados intentos. Espera unos minutos."
+      case 500:
+        return "Error del servidor. Intenta más tarde."
+      default:
+        return error.message || "Error al crear la cuenta."
+    }
+  }
+  if (error instanceof Error) {
+    if (error.message.includes("fetch")) {
+      return "No se pudo conectar con el servidor."
+    }
+    return error.message
+  }
+  return "Ocurrió un error inesperado."
+}
 
 export default function SignUpPage() {
-  const [fullName, setFullName] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { register } = useAuth()
-  const router = useRouter()
+
+  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0
+
+  // Verificar todos los requisitos de contraseña
+  const passwordChecks = passwordRequirements.map(req => ({
+    ...req,
+    passed: req.test(password)
+  }))
+  const allPasswordRequirementsMet = passwordChecks.every(req => req.passed)
+  const isFormValid = passwordsMatch && allPasswordRequirementsMet
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,80 +76,267 @@ export default function SignUpPage() {
       return
     }
 
+    if (!allPasswordRequirementsMet) {
+      setError("La contraseña no cumple con todos los requisitos")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      await register(email, password, fullName)
+      await register(email, password, firstName, lastName)
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(getErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
-      <div className="w-full max-w-md">
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Registro de Profesor</CardTitle>
-            <CardDescription>Crea tu cuenta para comenzar a crear exámenes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nombre Completo</Label>
+    <div className="min-h-screen flex">
+      {/* Panel izquierdo - Visual */}
+      <div className="hidden lg:flex lg:w-[55%] relative bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 overflow-hidden">
+        {/* Patrón decorativo */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-white rounded-full translate-x-1/3 translate-y-1/3" />
+          <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2" />
+        </div>
+
+        {/* Contenido */}
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+          <div className="flex items-center gap-4">
+            <Image
+              src="/isotipo.png"
+              alt="Universidad de Oriente"
+              width={60}
+              height={60}
+              className="rounded-full bg-white p-1"
+            />
+            <div>
+              <p className="font-semibold text-lg">Universidad de Oriente</p>
+              <p className="text-blue-200 text-sm">Sistema de Evaluación</p>
+            </div>
+          </div>
+
+          <div className="max-w-md">
+            <h1 className="text-4xl font-bold mb-6 leading-tight">
+              Únete a nuestra plataforma
+            </h1>
+            <p className="text-blue-100 text-lg leading-relaxed">
+              Crea tu cuenta como profesor y comienza a gestionar
+              tus evaluaciones de manera moderna y eficiente.
+            </p>
+          </div>
+
+          <p className="text-blue-300 text-sm">
+            © 2025 Universidad de Oriente - Santiago de Cuba
+          </p>
+        </div>
+      </div>
+
+      {/* Panel derecho - Formulario */}
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 sm:p-12 bg-white overflow-y-auto">
+        <div className="w-full max-w-md">
+          {/* Logo móvil */}
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <Image
+              src="/isotipo.png"
+              alt="Universidad de Oriente"
+              width={70}
+              height={70}
+              className="mb-3"
+            />
+            <p className="text-gray-600 text-sm">Sistema de Evaluación</p>
+          </div>
+
+          {/* Header */}
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Crear cuenta
+            </h2>
+            <p className="text-gray-500">
+              Completa tus datos para registrarte
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mb-5 flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
+              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          {/* Formulario */}
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre
+                </label>
                 <Input
-                  id="fullName"
+                  id="firstName"
                   type="text"
-                  placeholder="Juan Pérez"
+                  placeholder="Juan"
                   required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="h-12 px-4 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  disabled={isLoading}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Apellidos
+                </label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="profesor@ejemplo.com"
+                  id="lastName"
+                  type="text"
+                  placeholder="Pérez"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="h-12 px-4 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  disabled={isLoading}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Correo electrónico
+              </label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="nombre@uo.edu.cu"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 px-4 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Contraseña
+              </label>
+              <div className="relative">
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 px-4 pr-12 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+              {/* Requisitos de contraseña */}
+              {password.length > 0 && (
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  {passwordChecks.map((req) => (
+                    <div key={req.key} className="flex items-center gap-1.5">
+                      {req.passed ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-gray-300" />
+                      )}
+                      <span className={`text-xs ${req.passed ? 'text-green-600' : 'text-gray-400'}`}>
+                        {req.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                Confirmar contraseña
+              </label>
+              <div className="relative">
                 <Input
                   id="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`h-12 px-4 pr-12 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                    confirmPassword && (passwordsMatch ? 'border-green-500 ring-green-500/20' : 'border-red-300')
+                  }`}
+                  disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Registrando..." : "Registrarse"}
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm">
-              ¿Ya tienes una cuenta?{" "}
-              <Link href="/auth/login" className="text-primary underline-offset-4 hover:underline">
-                Inicia Sesión
-              </Link>
+              {confirmPassword && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  {passwordsMatch ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span className="text-xs text-green-600">Las contraseñas coinciden</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-xs text-red-500">Las contraseñas no coinciden</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+
+            <Button
+              type="submit"
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 mt-2"
+              disabled={isLoading || !isFormValid}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Creando cuenta...
+                </>
+              ) : (
+                "Crear cuenta"
+              )}
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="my-6 flex items-center">
+            <div className="flex-1 border-t border-gray-200" />
+            <span className="px-4 text-sm text-gray-400">o</span>
+            <div className="flex-1 border-t border-gray-200" />
+          </div>
+
+          {/* Link login */}
+          <p className="text-center text-gray-600">
+            ¿Ya tienes una cuenta?{" "}
+            <Link
+              href="/auth/login"
+              className="font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Iniciar sesión
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

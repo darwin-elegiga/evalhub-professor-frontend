@@ -1,11 +1,12 @@
 // Configuración de la API del backend NestJS
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api",
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/",
   ENDPOINTS: {
     // Auth
     LOGIN: "/auth/login",
     REGISTER: "/auth/register",
     LOGOUT: "/auth/logout",
+    REFRESH: "/auth/refresh",
     ME: "/auth/me",
 
     // Teachers

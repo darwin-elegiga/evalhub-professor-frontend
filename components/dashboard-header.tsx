@@ -33,6 +33,9 @@ const PAGE_CONFIG: Record<
   "/dashboard/grades": {
     title: "Calificaciones",
   },
+  "/dashboard/subjects": {
+    title: "Mis Asignaturas",
+  },
 }
 
 function getPageConfig(pathname: string) {

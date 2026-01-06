@@ -12,6 +12,7 @@ import {
   LogOut,
   ChevronUp,
   Plus,
+  Layers,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -53,6 +54,11 @@ const navigationItems = [
     title: "Banco de Preguntas",
     url: "/dashboard/questions",
     icon: Library,
+  },
+  {
+    title: "Mis Asignaturas",
+    url: "/dashboard/subjects",
+    icon: Layers,
   },
   {
     title: "Estudiantes",

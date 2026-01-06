@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { AuthGuard } from "@/components/auth-guard"
+import { HeaderActionsProvider } from "@/lib/header-actions-context"
 
 export default function DashboardLayout({
   children,
@@ -12,15 +13,17 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <SidebarProvider defaultOpen={false}>
-        <AppSidebar />
-        <SidebarInset>
-          <div className="flex min-h-screen flex-col bg-gray-50/50">
-            <DashboardHeader />
-            <main className="flex-1 overflow-auto">{children}</main>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <HeaderActionsProvider>
+        <SidebarProvider defaultOpen={false}>
+          <AppSidebar />
+          <SidebarInset>
+            <div className="flex min-h-screen flex-col bg-gray-50/50">
+              <DashboardHeader />
+              <main className="flex-1 overflow-auto">{children}</main>
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+      </HeaderActionsProvider>
     </AuthGuard>
   )
 }

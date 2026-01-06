@@ -4,31 +4,31 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus } from "lucide-react"
+import { useHeaderActions } from "@/lib/header-actions-context"
 
 const PAGE_CONFIG: Record<
   string,
-  { title: string; action?: { label: string; href: string } }
+  { title: string; defaultAction?: { label: string; href: string } }
 > = {
   "/dashboard": {
     title: "Panel de Control",
   },
   "/dashboard/exams": {
     title: "Exámenes",
-    action: { label: "Nuevo Examen", href: "/dashboard/exams/create" },
+    defaultAction: { label: "Nuevo Examen", href: "/dashboard/exams/create" },
   },
   "/dashboard/exams/create": {
     title: "Crear Examen",
   },
   "/dashboard/questions": {
     title: "Banco de Preguntas",
-    action: { label: "Nueva Pregunta", href: "/dashboard/questions/create" },
+    defaultAction: { label: "Nueva Pregunta", href: "/dashboard/questions/create" },
   },
   "/dashboard/questions/create": {
     title: "Nueva Pregunta",
   },
   "/dashboard/students": {
     title: "Estudiantes",
-    action: { label: "Nuevo Estudiante", href: "/dashboard/students/create" },
   },
   "/dashboard/grades": {
     title: "Calificaciones",
@@ -64,18 +64,29 @@ function getPageConfig(pathname: string) {
 export function DashboardHeader() {
   const pathname = usePathname()
   const config = getPageConfig(pathname)
+  const { actions } = useHeaderActions()
 
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6">
       <h1 className="text-sm font-medium text-gray-900">{config.title}</h1>
-      {config.action && (
-        <Button asChild size="sm">
-          <Link href={config.action.href}>
-            <Plus className="mr-2 h-4 w-4" />
-            {config.action.label}
-          </Link>
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        {/* Context actions from pages */}
+        {actions.map((action, index) => (
+          <Button key={index} size="sm" variant={index === 0 ? "default" : "outline"} onClick={action.onClick}>
+            {index === 0 && <Plus className="mr-2 h-4 w-4" />}
+            {action.label}
+          </Button>
+        ))}
+        {/* Default link-based action if no context actions */}
+        {actions.length === 0 && config.defaultAction && (
+          <Button asChild size="sm">
+            <Link href={config.defaultAction.href}>
+              <Plus className="mr-2 h-4 w-4" />
+              {config.defaultAction.label}
+            </Link>
+          </Button>
+        )}
+      </div>
     </header>
   )
 }

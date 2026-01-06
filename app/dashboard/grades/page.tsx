@@ -128,10 +128,10 @@ export default function GradesPage() {
               submitted_at: assignment.submitted_at,
               student: {
                 id: student?.id || "",
-                full_name: student?.full_name || "Estudiante",
+                fullName: student?.fullName || "Estudiante",
                 email: student?.email || "",
                 career: student?.career,
-                group_id: student?.group_id,
+                group_id: student?.groups.map((g) => g.id),
               },
               exam: {
                 id: exam?.id || "",
@@ -144,7 +144,7 @@ export default function GradesPage() {
       } else {
         const [assignmentsData, groupsData, examsData] = await Promise.all([
           apiClient.get<AssignmentWithDetails[]>(API_CONFIG.ENDPOINTS.ASSIGNMENTS),
-          apiClient.get<StudentGroup[]>("/api/student-groups"),
+          apiClient.get<StudentGroup[]>("/student-groups"),
           apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS),
         ])
         setAssignments(assignmentsData)

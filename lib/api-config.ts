@@ -16,9 +16,13 @@ export const API_CONFIG = {
     STUDENTS: "/students",
     STUDENT_BY_ID: (id: string) => `/students/${id}`,
 
+    // Careers
+    CAREERS: "/careers",
+
     // Groups
     GROUPS: "/groups",
     GROUP_BY_ID: (id: string) => `/groups/${id}`,
+    GROUP_STUDENTS: (id: string) => `/groups/${id}/students`,
 
     // Exams
     EXAMS: "/exams",

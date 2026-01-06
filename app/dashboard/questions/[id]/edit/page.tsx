@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type {
   Subject,
+  BankQuestion,
   QuestionType,
   QuestionDifficulty,
   MultipleChoiceConfig,
@@ -75,8 +76,8 @@ const questionSchema = z.object({
   question_type: z.enum(["multiple_choice", "numeric", "graph_click", "image_hotspot", "open_text"]),
   difficulty: z.enum(["easy", "medium", "hard"]),
   estimated_time_minutes: z.number().min(1).max(120).optional(),
-  weight: z.number().min(1).max(10), // Peso relativo de la pregunta en el examen
-  tags: z.array(z.string()),
+  weight: z.number().min(1).max(10),
+  tags: z.array(z.string()).default([]),
 })
 
 type QuestionFormData = z.infer<typeof questionSchema>
@@ -87,10 +88,14 @@ interface MultipleChoiceOption {
   is_correct: boolean
 }
 
-export default function CreateQuestionPage() {
+export default function EditQuestionPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const params = useParams()
+  const questionId = params.id as string
+
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [question, setQuestion] = useState<BankQuestion | null>(null)
   const [loadingData, setLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -135,6 +140,7 @@ export default function CreateQuestionPage() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<QuestionFormData>({
     resolver: zodResolver(questionSchema),
@@ -159,21 +165,93 @@ export default function CreateQuestionPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (user) {
+    if (user && questionId) {
       loadData()
     }
-  }, [user])
+  }, [user, questionId])
 
   const loadData = async () => {
     try {
+      let questionData: BankQuestion | null = null
+      let subjectsData: Subject[] = []
+
       if (USE_MOCK_DATA) {
-        setSubjects(MOCK_DATA.subjects)
+        subjectsData = MOCK_DATA.subjects
+        questionData = MOCK_DATA.bankQuestions.find((q) => q.id === questionId) || null
       } else {
-        const data = await apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS)
-        setSubjects(data)
+        const [qData, sData] = await Promise.all([
+          apiClient.get<BankQuestion>(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(questionId)),
+          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
+        ])
+        questionData = qData
+        subjectsData = sData
+      }
+
+      setSubjects(subjectsData)
+      setQuestion(questionData)
+
+      if (questionData) {
+        // Populate form with existing data
+        reset({
+          title: questionData.title,
+          content: questionData.content,
+          subject_id: questionData.subjectId || "",
+          question_type: questionData.questionType,
+          difficulty: questionData.difficulty,
+          estimated_time_minutes: questionData.estimatedTimeMinutes || 5,
+          weight: questionData.weight,
+          tags: questionData.tags,
+        })
+
+        setTags(questionData.tags)
+        setTimeInputStr(String(questionData.estimatedTimeMinutes || 5))
+
+        // Populate type-specific config
+        if (questionData.questionType === "multiple_choice" && questionData.typeConfig) {
+          const config = questionData.typeConfig as any
+          if (config.options) {
+            setMcOptions(
+              config.options.map((opt: any) => ({
+                id: opt.id,
+                text: opt.text,
+                is_correct: opt.isCorrect,
+              }))
+            )
+          }
+          setMcAllowMultiple(config.allowMultiple || false)
+          setMcShuffleOptions(config.shuffleOptions ?? true)
+        } else if (questionData.questionType === "numeric" && questionData.typeConfig) {
+          const config = questionData.typeConfig as any
+          setNumericValue(config.correctValue || 0)
+          setNumericValueStr(String(config.correctValue || 0))
+          setNumericTolerance(config.tolerance || 5)
+          setNumericToleranceStr(String(config.tolerance || 5))
+          setNumericToleranceType(config.toleranceType || "percentage")
+          setNumericUnit(config.unit || "")
+        } else if (questionData.questionType === "graph_click" && questionData.typeConfig) {
+          const config = questionData.typeConfig as any
+          setGraphConfig({
+            xRange: config.xRange || [-10, 10],
+            yRange: config.yRange || [-10, 10],
+            xLabel: config.xLabel || config.axisLabels?.x || "x",
+            yLabel: config.yLabel || config.axisLabels?.y || "y",
+            showGrid: config.showGrid !== false && config.gridVisible !== false,
+            gridStep: config.gridStep || config.graphData?.gridStep || 1,
+            lines: config.lines || config.graphData?.lines || [],
+            functions: config.functions || config.graphData?.functions || [],
+            toleranceRadius: config.toleranceRadius || 0.5,
+            isInteractive: config.isInteractive !== undefined ? config.isInteractive : (config.graphData?.isInteractive || false),
+            correctPoint: config.correctPoint,
+            title: config.title || config.graphData?.title,
+            answerType: config.answerType,
+            correctFunctionId: config.correctFunctionId,
+            correctArea: config.correctArea,
+          })
+        }
       }
     } catch (error) {
-      console.error("Error loading subjects:", error)
+      console.error("Error loading data:", error)
+      toast.error("Error al cargar la pregunta")
     } finally {
       setLoadingData(false)
     }
@@ -294,26 +372,25 @@ export default function CreateQuestionPage() {
       }
 
       if (USE_MOCK_DATA) {
-        // Add to mock data
-        const newQuestion = {
-          id: crypto.randomUUID(),
-          ...questionData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          times_used: 0,
-          average_score: 0,
+        // Update mock data
+        const index = MOCK_DATA.bankQuestions.findIndex((q) => q.id === questionId)
+        if (index !== -1) {
+          MOCK_DATA.bankQuestions[index] = {
+            ...MOCK_DATA.bankQuestions[index],
+            ...questionData,
+            updatedAt: new Date().toISOString(),
+          } as any
         }
-        MOCK_DATA.bankQuestions.push(newQuestion as any)
-        toast.success("Pregunta creada exitosamente")
+        toast.success("Pregunta actualizada exitosamente")
         router.push("/dashboard/questions")
       } else {
-        await apiClient.post(API_CONFIG.ENDPOINTS.QUESTIONS, questionData)
-        toast.success("Pregunta creada exitosamente")
+        await apiClient.put(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(questionId), questionData)
+        toast.success("Pregunta actualizada exitosamente")
         router.push("/dashboard/questions")
       }
     } catch (error) {
-      console.error("Error creating question:", error)
-      toast.error("Error al crear la pregunta")
+      console.error("Error updating question:", error)
+      toast.error("Error al actualizar la pregunta")
     } finally {
       setIsSubmitting(false)
     }
@@ -322,13 +399,30 @@ export default function CreateQuestionPage() {
   if (loading || loadingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        Cargando...
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Cargando pregunta...</p>
+        </div>
       </div>
     )
   }
 
   if (!user) {
     return null
+  }
+
+  if (!question) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Pregunta no encontrada</h2>
+          <p className="text-muted-foreground mb-4">La pregunta que buscas no existe o fue eliminada.</p>
+          <Button asChild>
+            <Link href="/dashboard/questions">Volver al banco de preguntas</Link>
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -342,9 +436,9 @@ export default function CreateQuestionPage() {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Crear Nueva Pregunta</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Editar Pregunta</h1>
           <p className="text-muted-foreground">
-            Agrega una pregunta a tu banco de preguntas
+            Modifica los datos de la pregunta
           </p>
         </div>
 
@@ -636,7 +730,6 @@ export default function CreateQuestionPage() {
                             value={numericValueStr}
                             onChange={(e) => {
                               const val = e.target.value
-                              // Allow empty, negative sign, decimal point, or valid numbers
                               if (val === "" || val === "-" || val === "." || val === "-.") {
                                 setNumericValueStr(val)
                                 setNumericValue(0)
@@ -649,7 +742,6 @@ export default function CreateQuestionPage() {
                               }
                             }}
                             onBlur={() => {
-                              // Clean up on blur
                               if (numericValueStr === "" || numericValueStr === "-" || numericValueStr === "." || numericValueStr === "-.") {
                                 setNumericValueStr("0")
                                 setNumericValue(0)
@@ -675,7 +767,6 @@ export default function CreateQuestionPage() {
                             value={numericToleranceStr}
                             onChange={(e) => {
                               const val = e.target.value
-                              // Allow empty, decimal point, or positive numbers
                               if (val === "" || val === ".") {
                                 setNumericToleranceStr(val)
                                 setNumericTolerance(0)
@@ -688,7 +779,6 @@ export default function CreateQuestionPage() {
                               }
                             }}
                             onBlur={() => {
-                              // Clean up on blur
                               if (numericToleranceStr === "" || numericToleranceStr === ".") {
                                 setNumericToleranceStr("0")
                                 setNumericTolerance(0)
@@ -774,15 +864,41 @@ export default function CreateQuestionPage() {
                       {graphConfig.isInteractive && (
                         <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
                           <div className="flex items-center gap-2 text-gray-600">
-                            <span className="text-gray-400">Punto correcto:</span>
-                            <span className="font-mono font-medium">
-                              ({graphConfig.correctPoint?.x ?? 0}, {graphConfig.correctPoint?.y ?? 0})
+                            <span className="text-gray-400">Tipo:</span>
+                            <span className="font-medium">
+                              {graphConfig.answerType === "point" && "Punto"}
+                              {graphConfig.answerType === "function" && "Función"}
+                              {graphConfig.answerType === "area" && "Área"}
+                              {!graphConfig.answerType && "Punto"}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <span className="text-gray-400">Tolerancia:</span>
-                            <span className="font-mono font-medium">{graphConfig.toleranceRadius}</span>
-                          </div>
+                          {(graphConfig.answerType === "point" || !graphConfig.answerType) && (
+                            <>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <span className="text-gray-400">Punto:</span>
+                                <span className="font-mono font-medium">
+                                  ({graphConfig.correctPoint?.x ?? 0}, {graphConfig.correctPoint?.y ?? 0})
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <span className="text-gray-400">Tolerancia:</span>
+                                <span className="font-mono font-medium">{graphConfig.toleranceRadius}</span>
+                              </div>
+                            </>
+                          )}
+                          {graphConfig.answerType === "function" && graphConfig.correctFunctionId && (
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <span className="text-gray-400">Función seleccionada</span>
+                            </div>
+                          )}
+                          {graphConfig.answerType === "area" && graphConfig.correctArea && (
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <span className="text-gray-400">Área:</span>
+                              <span className="font-mono font-medium">
+                                ({graphConfig.correctArea.x1}, {graphConfig.correctArea.y1}) - ({graphConfig.correctArea.x2}, {graphConfig.correctArea.y2})
+                              </span>
+                            </div>
+                          )}
                           <span className="text-xs text-gray-400 ml-auto">
                             Configura en la pestaña "Respuesta"
                           </span>
@@ -809,7 +925,7 @@ export default function CreateQuestionPage() {
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               <Save className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Guardando..." : "Guardar Pregunta"}
+              {isSubmitting ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </div>
         </form>

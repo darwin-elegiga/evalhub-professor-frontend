@@ -118,33 +118,33 @@ export type QuestionConfig =
 
 export interface BankQuestion {
   id: string
-  teacher_id: string
-  subject_id: string | null
-  topic_id: string | null
+  teacherId: string
+  subjectId: string | null
+  topicId: string | null
 
   // Contenido
   title: string // Título corto para identificación
   content: string // HTML del editor Tiptap (enunciado completo)
 
   // Tipo y configuración
-  question_type: QuestionType
-  type_config: QuestionConfig["config"]
+  questionType: QuestionType
+  typeConfig: QuestionConfig["config"]
 
   // Metadatos
   difficulty: QuestionDifficulty
-  estimated_time_minutes: number | null
+  estimatedTimeMinutes: number | null
   tags: string[]
 
   // Peso relativo (1-10) para el cálculo del promedio en exámenes
   weight: number
 
   // Timestamps
-  created_at: string
-  updated_at: string
+  createdAt: string
+  updatedAt: string
 
   // Estadísticas (opcionales, calculadas)
-  times_used?: number
-  average_score?: number // Promedio de calificaciones (2-5) en usos anteriores
+  timesUsed?: number
+  averageScore?: number | null // Promedio de calificaciones (2-5) en usos anteriores
 }
 
 // Pregunta dentro de un examen (referencia a BankQuestion)

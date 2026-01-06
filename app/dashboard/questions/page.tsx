@@ -1,11 +1,15 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { useHeaderActions } from "@/lib/header-actions-context"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
+import { apiClient } from "@/lib/api-client"
+import { API_CONFIG } from "@/lib/api-config"
 import type {
   BankQuestion,
-  QuestionTopic,
+  Subject,
   QuestionType,
   QuestionDifficulty,
 } from "@/lib/types"
@@ -18,6 +22,8 @@ import {
   Copy,
   Download,
   Upload,
+  AlertCircle,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,6 +47,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import Link from "next/link"
 import { downloadQuestions } from "@/lib/export-import"
 import { ImportDialog } from "@/components/import-dialog"
@@ -66,25 +82,47 @@ const DIFFICULTY_COLORS: Record<QuestionDifficulty, string> = {
   hard: "bg-red-100 text-red-800",
 }
 
-const TOPIC_COLORS: Record<string, string> = {
+const SUBJECT_COLORS: Record<string, string> = {
   blue: "bg-blue-100 text-blue-800",
   green: "bg-green-100 text-green-800",
   orange: "bg-orange-100 text-orange-800",
   purple: "bg-purple-100 text-purple-800",
   red: "bg-red-100 text-red-800",
+  pink: "bg-pink-100 text-pink-800",
+  cyan: "bg-cyan-100 text-cyan-800",
+  yellow: "bg-yellow-100 text-yellow-800",
+  indigo: "bg-indigo-100 text-indigo-800",
+  teal: "bg-teal-100 text-teal-800",
 }
 
 export default function QuestionBankPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const { setActions, clearActions } = useHeaderActions()
   const [questions, setQuestions] = useState<BankQuestion[]>([])
-  const [topics, setTopics] = useState<QuestionTopic[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
 
+  // Filters
   const [search, setSearch] = useState("")
-  const [topicFilter, setTopicFilter] = useState<string>("all")
+  const [subjectFilter, setSubjectFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all")
+
+  // Delete confirmation
+  const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Header actions
+  const openImportDialog = useCallback(() => setImportDialogOpen(true), [])
+
+  useEffect(() => {
+    setActions([
+      { label: "Nueva Pregunta", onClick: () => window.location.href = "/dashboard/questions/create" },
+    ])
+    return () => clearActions()
+  }, [setActions, clearActions])
 
   useEffect(() => {
     if (user) {
@@ -96,10 +134,28 @@ export default function QuestionBankPage() {
     try {
       if (USE_MOCK_DATA) {
         setQuestions(MOCK_DATA.bankQuestions)
-        setTopics(MOCK_DATA.topics)
+        setSubjects([
+          { id: "1", name: "Física", description: null, color: "blue", createdAt: "", updatedAt: "" },
+          { id: "2", name: "Matemáticas", description: null, color: "green", createdAt: "", updatedAt: "" },
+        ])
       } else {
-        setQuestions([])
-        setTopics([])
+        // Build query params for filters
+        const params = new URLSearchParams()
+        if (subjectFilter !== "all") params.append("subjectId", subjectFilter)
+        if (typeFilter !== "all") params.append("type", typeFilter)
+        if (difficultyFilter !== "all") params.append("difficulty", difficultyFilter)
+
+        const queryString = params.toString()
+        const questionsEndpoint = queryString
+          ? `${API_CONFIG.ENDPOINTS.QUESTIONS}?${queryString}`
+          : API_CONFIG.ENDPOINTS.QUESTIONS
+
+        const [questionsData, subjectsData] = await Promise.all([
+          apiClient.get<BankQuestion[]>(questionsEndpoint),
+          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
+        ])
+        setQuestions(questionsData)
+        setSubjects(subjectsData)
       }
     } catch (error) {
       console.error("Error loading data:", error)
@@ -108,19 +164,26 @@ export default function QuestionBankPage() {
     }
   }
 
-  const getTopicById = (id: string | null) => {
+  // Reload when filters change (for API filtering)
+  useEffect(() => {
+    if (!USE_MOCK_DATA && user && !loadingData) {
+      loadData()
+    }
+  }, [subjectFilter, typeFilter, difficultyFilter])
+
+  const getSubjectById = (id: string | null) => {
     if (!id) return null
-    return topics.find((t) => t.id === id)
+    return subjects.find((s) => s.id === id)
   }
 
   const handleExportAll = () => {
     if (questions.length === 0) return
-    downloadQuestions(questions, topics)
+    downloadQuestions(questions, [])
   }
 
   const handleExportFiltered = () => {
     if (filteredQuestions.length === 0) return
-    downloadQuestions(filteredQuestions, topics, `preguntas-filtradas-${new Date().toISOString().split("T")[0]}`)
+    downloadQuestions(filteredQuestions, [], `preguntas-filtradas-${new Date().toISOString().split("T")[0]}`)
   }
 
   const handleImport = async (data: QuestionBankExport | ExamExport) => {
@@ -137,17 +200,79 @@ export default function QuestionBankPage() {
     loadData()
   }
 
+  const handleDuplicate = async (question: BankQuestion) => {
+    try {
+      const duplicatePayload = {
+        title: `${question.title} (copia)`,
+        content: question.content,
+        questionType: question.questionType,
+        typeConfig: question.typeConfig,
+        difficulty: question.difficulty,
+        estimatedTimeMinutes: question.estimatedTimeMinutes,
+        tags: question.tags,
+        weight: question.weight,
+        subjectId: question.subjectId,
+        topicId: null,
+      }
+
+      if (USE_MOCK_DATA) {
+        const newQuestion: BankQuestion = {
+          ...question,
+          id: crypto.randomUUID(),
+          title: duplicatePayload.title,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        setQuestions((prev) => [...prev, newQuestion])
+      } else {
+        const newQuestion = await apiClient.post<BankQuestion>(
+          API_CONFIG.ENDPOINTS.QUESTIONS,
+          duplicatePayload
+        )
+        setQuestions((prev) => [...prev, newQuestion])
+      }
+    } catch (error) {
+      console.error("Error duplicating question:", error)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteQuestionId) return
+    setIsDeleting(true)
+
+    try {
+      if (USE_MOCK_DATA) {
+        setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionId))
+      } else {
+        await apiClient.delete(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(deleteQuestionId))
+        setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionId))
+      }
+      setDeleteQuestionId(null)
+    } catch (error) {
+      console.error("Error deleting question:", error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // Client-side filtering (for mock data or additional search)
   const filteredQuestions = questions.filter((q) => {
     const matchesSearch =
       q.title.toLowerCase().includes(search.toLowerCase()) ||
       q.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
 
-    const matchesTopic = topicFilter === "all" || q.topic_id === topicFilter
-    const matchesType = typeFilter === "all" || q.question_type === typeFilter
+    // If using API, filters are already applied server-side
+    if (!USE_MOCK_DATA) {
+      return matchesSearch
+    }
+
+    // For mock data, apply all filters client-side
+    const matchesSubject = subjectFilter === "all" || q.subjectId === subjectFilter
+    const matchesType = typeFilter === "all" || q.questionType === typeFilter
     const matchesDifficulty =
       difficultyFilter === "all" || q.difficulty === difficultyFilter
 
-    return matchesSearch && matchesTopic && matchesType && matchesDifficulty
+    return matchesSearch && matchesSubject && matchesType && matchesDifficulty
   })
 
   if (loadingData) {
@@ -172,7 +297,7 @@ export default function QuestionBankPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setImportDialogOpen(true)}
+              onClick={openImportDialog}
             >
               <Upload className="mr-2 h-4 w-4" />
               Importar
@@ -211,15 +336,15 @@ export default function QuestionBankPage() {
                   />
                 </div>
 
-                <Select value={topicFilter} onValueChange={setTopicFilter}>
+                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Tema" />
+                    <SelectValue placeholder="Asignatura" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos los temas</SelectItem>
-                    {topics.map((topic) => (
-                      <SelectItem key={topic.id} value={topic.id}>
-                        {topic.name}
+                    <SelectItem value="all">Todas las asignaturas</SelectItem>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -280,12 +405,13 @@ export default function QuestionBankPage() {
           ) : (
             <div className="grid gap-4">
               {filteredQuestions.map((question) => {
-                const topic = getTopicById(question.topic_id)
+                const subject = getSubjectById(question.subjectId)
 
                 return (
                   <Card
                     key={question.id}
-                    className="border-gray-200 shadow-sm transition-shadow hover:shadow-md"
+                    className="border-gray-200 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
+                    onClick={() => router.push(`/dashboard/questions/${question.id}`)}
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
@@ -294,16 +420,16 @@ export default function QuestionBankPage() {
                             {question.title}
                           </CardTitle>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {topic && (
+                            {subject && (
                               <Badge
                                 variant="secondary"
-                                className={TOPIC_COLORS[topic.color] || ""}
+                                className={SUBJECT_COLORS[subject.color] || "bg-gray-100 text-gray-800"}
                               >
-                                {topic.name}
+                                {subject.name}
                               </Badge>
                             )}
                             <Badge variant="outline">
-                              {QUESTION_TYPE_LABELS[question.question_type]}
+                              {QUESTION_TYPE_LABELS[question.questionType]}
                             </Badge>
                             <Badge
                               variant="secondary"
@@ -314,38 +440,43 @@ export default function QuestionBankPage() {
                             <Badge variant="secondary" title="Peso relativo">
                               ×{question.weight}
                             </Badge>
-                            {question.estimated_time_minutes && (
+                            {question.estimatedTimeMinutes && (
                               <Badge variant="secondary">
-                                ~{question.estimated_time_minutes} min
+                                ~{question.estimatedTimeMinutes} min
                               </Badge>
                             )}
                           </div>
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
-                                href={`/dashboard/questions/${question.id}`}
+                                href={`/dashboard/questions/${question.id}/edit`}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Editar
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicate(question)}>
                               <Copy className="mr-2 h-4 w-4" />
                               Duplicar
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => setDeleteQuestionId(question.id)}
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Eliminar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                        </DropdownMenu>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -368,15 +499,15 @@ export default function QuestionBankPage() {
                           </Badge>
                         ))}
                       </div>
-                      {(question.times_used !== undefined ||
-                        question.average_score !== undefined) && (
+                      {(question.timesUsed !== undefined ||
+                        question.averageScore !== undefined) && (
                         <div className="mt-3 flex gap-4 text-sm text-muted-foreground">
-                          {question.times_used !== undefined && (
-                            <span>Usado {question.times_used} veces</span>
+                          {question.timesUsed !== undefined && (
+                            <span>Usado {question.timesUsed} veces</span>
                           )}
-                          {question.average_score !== undefined && (
+                          {question.averageScore !== undefined && question.averageScore !== null && (
                             <span>
-                              Promedio: {(question.average_score * 100).toFixed(0)}%
+                              Promedio: {(question.averageScore * 100).toFixed(0)}%
                             </span>
                           )}
                         </div>
@@ -396,6 +527,39 @@ export default function QuestionBankPage() {
         type="questions"
         onImport={handleImport}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!deleteQuestionId}
+        onOpenChange={(open) => !open && setDeleteQuestionId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar pregunta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La pregunta será eliminada
+              permanentemente del banco de preguntas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                "Eliminar"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   )
 }

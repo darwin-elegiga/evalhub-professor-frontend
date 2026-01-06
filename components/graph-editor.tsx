@@ -31,6 +31,8 @@ export interface GraphLine {
   type: "line" | "curve" | "scatter"
 }
 
+export type AnswerType = "point" | "function" | "area"
+
 export interface GraphConfig {
   xRange: [number, number]
   yRange: [number, number]
@@ -44,6 +46,9 @@ export interface GraphConfig {
   correctPoint?: GraphPoint
   toleranceRadius: number
   isInteractive: boolean // If true, student can click to mark answer
+  answerType?: AnswerType // Type of answer expected
+  correctFunctionId?: string // If answerType is "function", which function is correct
+  correctArea?: { x1: number; y1: number; x2: number; y2: number } // If answerType is "area"
 }
 
 interface GraphEditorProps {
@@ -76,6 +81,7 @@ const DEFAULT_CONFIG: GraphConfig = {
   functions: [],
   toleranceRadius: 0.5,
   isInteractive: false,
+  answerType: "point",
 }
 
 // Safe math expression evaluator
@@ -131,11 +137,45 @@ export function GraphEditor({
   selectedPoint,
 }: GraphEditorProps) {
   const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [activeLine, setActiveLine] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragPointIndex, setDragPointIndex] = useState<number | null>(null)
   const [functionInput, setFunctionInput] = useState("")
   const [functionError, setFunctionError] = useState<string | null>(null)
+  const [isSelectingPoint, setIsSelectingPoint] = useState(false)
+  const [isSelectingArea, setIsSelectingArea] = useState(false)
+  const [areaStart, setAreaStart] = useState<{ x: number; y: number } | null>(null)
+
+  // String states for axis inputs to allow typing "-" and empty values
+  const [xMinStr, setXMinStr] = useState(String(config.xRange[0]))
+  const [xMaxStr, setXMaxStr] = useState(String(config.xRange[1]))
+  const [yMinStr, setYMinStr] = useState(String(config.yRange[0]))
+  const [yMaxStr, setYMaxStr] = useState(String(config.yRange[1]))
+  const [gridStepStr, setGridStepStr] = useState(String(config.gridStep))
+
+  // Sync string states when config changes externally
+  useEffect(() => {
+    setXMinStr(String(config.xRange[0]))
+    setXMaxStr(String(config.xRange[1]))
+    setYMinStr(String(config.yRange[0]))
+    setYMaxStr(String(config.yRange[1]))
+    setGridStepStr(String(config.gridStep))
+  }, [config.xRange, config.yRange, config.gridStep])
+
+  // Handle clicks outside to deselect active line
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setActiveLine(null)
+      }
+    }
+
+    if (activeLine) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [activeLine])
 
   const width = 500
   const height = 400
@@ -199,6 +239,32 @@ export function GraphEditor({
 
       if (mode === "answer" && onPointSelected) {
         onPointSelected({ x: graphX, y: graphY })
+      } else if (mode === "edit" && isSelectingPoint) {
+        // Set correct point for answer
+        onChange({
+          ...config,
+          correctPoint: { x: graphX, y: graphY },
+          answerType: "point",
+        })
+        setIsSelectingPoint(false)
+      } else if (mode === "edit" && isSelectingArea) {
+        // Handle area selection
+        if (!areaStart) {
+          setAreaStart({ x: graphX, y: graphY })
+        } else {
+          onChange({
+            ...config,
+            correctArea: {
+              x1: Math.min(areaStart.x, graphX),
+              y1: Math.min(areaStart.y, graphY),
+              x2: Math.max(areaStart.x, graphX),
+              y2: Math.max(areaStart.y, graphY),
+            },
+            answerType: "area",
+          })
+          setAreaStart(null)
+          setIsSelectingArea(false)
+        }
       } else if (mode === "edit" && activeLine) {
         // Add point to active line
         const lineIndex = config.lines.findIndex((l) => l.id === activeLine)
@@ -212,7 +278,7 @@ export function GraphEditor({
         }
       }
     },
-    [mode, activeLine, config, onChange, onPointSelected, toGraphX, toGraphY]
+    [mode, activeLine, config, onChange, onPointSelected, toGraphX, toGraphY, isSelectingPoint, isSelectingArea, areaStart]
   )
 
   // Generate grid lines
@@ -529,6 +595,39 @@ export function GraphEditor({
     )
   }
 
+  // Render correct area (for edit mode)
+  const renderCorrectArea = () => {
+    if (!config.correctArea || mode === "answer") return null
+
+    return (
+      <rect
+        x={toSvgX(config.correctArea.x1)}
+        y={toSvgY(config.correctArea.y2)}
+        width={toSvgX(config.correctArea.x2) - toSvgX(config.correctArea.x1)}
+        height={toSvgY(config.correctArea.y1) - toSvgY(config.correctArea.y2)}
+        fill="rgba(34, 197, 94, 0.2)"
+        stroke="#22c55e"
+        strokeWidth={2}
+        strokeDasharray="5,5"
+      />
+    )
+  }
+
+  // Render area being selected
+  const renderAreaSelection = () => {
+    if (!areaStart || !isSelectingArea) return null
+
+    return (
+      <circle
+        cx={toSvgX(areaStart.x)}
+        cy={toSvgY(areaStart.y)}
+        r={6}
+        fill="#22c55e"
+        className="animate-pulse"
+      />
+    )
+  }
+
   // Add new line
   const addLine = () => {
     const newLine: GraphLine = {
@@ -599,7 +698,7 @@ export function GraphEditor({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={containerRef}>
       {/* Graph SVG */}
       <div className="border rounded-lg bg-white p-2 overflow-hidden">
         {config.title && (
@@ -611,7 +710,7 @@ export function GraphEditor({
           height={height}
           className={cn(
             "mx-auto",
-            (mode === "answer" || (mode === "edit" && activeLine)) &&
+            (mode === "answer" || (mode === "edit" && activeLine) || isSelectingPoint || isSelectingArea) &&
               "cursor-crosshair"
           )}
           onClick={handleSvgClick}
@@ -639,6 +738,12 @@ export function GraphEditor({
 
           {/* Correct point indicator */}
           {renderCorrectPoint()}
+
+          {/* Correct area indicator */}
+          {renderCorrectArea()}
+
+          {/* Area selection in progress */}
+          {renderAreaSelection()}
 
           {/* Selected point (answer mode) */}
           {renderSelectedPoint()}
@@ -683,7 +788,7 @@ export function GraphEditor({
               <Label>Agregar función y = f(x)</Label>
               <div className="flex gap-2">
                 <div className="flex-1 flex items-center gap-2">
-                  <span className="text-sm font-medium">y =</span>
+                  <span className="text-sm font-medium whitespace-nowrap">y =</span>
                   <Input
                     value={functionInput}
                     onChange={(e) => {
@@ -699,7 +804,7 @@ export function GraphEditor({
                     }}
                   />
                 </div>
-                <Button onClick={addFunction} variant="outline">
+                <Button type="button" onClick={addFunction} variant="outline">
                   <Plus className="mr-2 h-4 w-4" />
                   Agregar
                 </Button>
@@ -741,6 +846,7 @@ export function GraphEditor({
                             className="w-8 h-6 border rounded cursor-pointer"
                           />
                           <Button
+                            type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => removeFunction(func.id)}
@@ -766,25 +872,51 @@ export function GraphEditor({
                 <Label>Rango X</Label>
                 <div className="flex gap-2">
                   <Input
-                    type="number"
-                    value={config.xRange[0]}
-                    onChange={(e) =>
-                      onChange({
-                        ...config,
-                        xRange: [Number(e.target.value), config.xRange[1]],
-                      })
-                    }
+                    type="text"
+                    value={xMinStr}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || val === "-" || /^-?\d*\.?\d*$/.test(val)) {
+                        setXMinStr(val)
+                        const num = parseFloat(val)
+                        if (!isNaN(num)) {
+                          onChange({
+                            ...config,
+                            xRange: [num, config.xRange[1]],
+                          })
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseFloat(xMinStr)
+                      if (isNaN(num)) {
+                        setXMinStr(String(config.xRange[0]))
+                      }
+                    }}
                     placeholder="Min"
                   />
                   <Input
-                    type="number"
-                    value={config.xRange[1]}
-                    onChange={(e) =>
-                      onChange({
-                        ...config,
-                        xRange: [config.xRange[0], Number(e.target.value)],
-                      })
-                    }
+                    type="text"
+                    value={xMaxStr}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || val === "-" || /^-?\d*\.?\d*$/.test(val)) {
+                        setXMaxStr(val)
+                        const num = parseFloat(val)
+                        if (!isNaN(num)) {
+                          onChange({
+                            ...config,
+                            xRange: [config.xRange[0], num],
+                          })
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseFloat(xMaxStr)
+                      if (isNaN(num)) {
+                        setXMaxStr(String(config.xRange[1]))
+                      }
+                    }}
                     placeholder="Max"
                   />
                 </div>
@@ -794,25 +926,51 @@ export function GraphEditor({
                 <Label>Rango Y</Label>
                 <div className="flex gap-2">
                   <Input
-                    type="number"
-                    value={config.yRange[0]}
-                    onChange={(e) =>
-                      onChange({
-                        ...config,
-                        yRange: [Number(e.target.value), config.yRange[1]],
-                      })
-                    }
+                    type="text"
+                    value={yMinStr}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || val === "-" || /^-?\d*\.?\d*$/.test(val)) {
+                        setYMinStr(val)
+                        const num = parseFloat(val)
+                        if (!isNaN(num)) {
+                          onChange({
+                            ...config,
+                            yRange: [num, config.yRange[1]],
+                          })
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseFloat(yMinStr)
+                      if (isNaN(num)) {
+                        setYMinStr(String(config.yRange[0]))
+                      }
+                    }}
                     placeholder="Min"
                   />
                   <Input
-                    type="number"
-                    value={config.yRange[1]}
-                    onChange={(e) =>
-                      onChange({
-                        ...config,
-                        yRange: [config.yRange[0], Number(e.target.value)],
-                      })
-                    }
+                    type="text"
+                    value={yMaxStr}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === "" || val === "-" || /^-?\d*\.?\d*$/.test(val)) {
+                        setYMaxStr(val)
+                        const num = parseFloat(val)
+                        if (!isNaN(num)) {
+                          onChange({
+                            ...config,
+                            yRange: [config.yRange[0], num],
+                          })
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseFloat(yMaxStr)
+                      if (isNaN(num)) {
+                        setYMaxStr(String(config.yRange[1]))
+                      }
+                    }}
                     placeholder="Max"
                   />
                 </div>
@@ -852,13 +1010,24 @@ export function GraphEditor({
               <div className="space-y-2">
                 <Label>Paso de la cuadrícula</Label>
                 <Input
-                  type="number"
-                  min={0.1}
-                  step={0.1}
-                  value={config.gridStep}
-                  onChange={(e) =>
-                    onChange({ ...config, gridStep: Number(e.target.value) })
-                  }
+                  type="text"
+                  value={gridStepStr}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                      setGridStepStr(val)
+                      const num = parseFloat(val)
+                      if (!isNaN(num) && num > 0) {
+                        onChange({ ...config, gridStep: num })
+                      }
+                    }
+                  }}
+                  onBlur={() => {
+                    const num = parseFloat(gridStepStr)
+                    if (isNaN(num) || num <= 0) {
+                      setGridStepStr(String(config.gridStep))
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -875,7 +1044,7 @@ export function GraphEditor({
           </TabsContent>
 
           <TabsContent value="lines" className="space-y-4">
-            <Button onClick={addLine} variant="outline" size="sm">
+            <Button type="button" onClick={addLine} variant="outline" size="sm">
               <Plus className="mr-2 h-4 w-4" />
               Agregar línea/función
             </Button>
@@ -906,6 +1075,7 @@ export function GraphEditor({
                       </div>
                       <div className="flex gap-1">
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           onClick={(e) => {
@@ -916,6 +1086,7 @@ export function GraphEditor({
                           <Grid3X3 className="h-4 w-4" />
                         </Button>
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           onClick={(e) => {
@@ -984,78 +1155,217 @@ export function GraphEditor({
           </TabsContent>
 
           <TabsContent value="answer" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={config.isInteractive}
-                onCheckedChange={(checked) =>
-                  onChange({ ...config, isInteractive: checked })
-                }
-              />
-              <Label>Pregunta interactiva (estudiante marca punto)</Label>
+            {/* Answer type selector */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Tipo de respuesta</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...config, answerType: "point", isInteractive: true })}
+                  className={cn(
+                    "p-3 rounded-lg border text-left transition-all text-sm",
+                    config.answerType === "point" || (!config.answerType && config.isInteractive)
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  <Target className="h-4 w-4 mb-1" />
+                  <span className="font-medium block">Punto</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...config, answerType: "function", isInteractive: true })}
+                  className={cn(
+                    "p-3 rounded-lg border text-left transition-all text-sm",
+                    config.answerType === "function"
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  <FunctionSquare className="h-4 w-4 mb-1" />
+                  <span className="font-medium block">Función</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...config, answerType: "area", isInteractive: true })}
+                  className={cn(
+                    "p-3 rounded-lg border text-left transition-all text-sm",
+                    config.answerType === "area"
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  <Grid3X3 className="h-4 w-4 mb-1" />
+                  <span className="font-medium block">Área</span>
+                </button>
+              </div>
             </div>
 
-            {config.isInteractive && (
-              <>
-                <div className="space-y-2">
-                  <Label>Punto correcto</Label>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <Label className="text-xs">X</Label>
-                      <Input
-                        type="number"
-                        step={0.1}
-                        value={config.correctPoint?.x ?? 0}
-                        onChange={(e) =>
-                          onChange({
-                            ...config,
-                            correctPoint: {
-                              x: Number(e.target.value),
-                              y: config.correctPoint?.y ?? 0,
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Label className="text-xs">Y</Label>
-                      <Input
-                        type="number"
-                        step={0.1}
-                        value={config.correctPoint?.y ?? 0}
-                        onChange={(e) =>
-                          onChange({
-                            ...config,
-                            correctPoint: {
-                              x: config.correctPoint?.x ?? 0,
-                              y: Number(e.target.value),
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
+            {/* Point answer config */}
+            {(config.answerType === "point" || (!config.answerType && config.isInteractive)) && (
+              <div className="space-y-3 p-3 rounded-lg bg-gray-50 border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Punto correcto</Label>
+                  <Button
+                    type="button"
+                    variant={isSelectingPoint ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setIsSelectingPoint(!isSelectingPoint)
+                      setActiveLine(null)
+                    }}
+                  >
+                    <Target className="h-4 w-4 mr-1" />
+                    {isSelectingPoint ? "Seleccionando..." : "Marcar en gráfico"}
+                  </Button>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Radio de tolerancia</Label>
-                  <Input
-                    type="number"
-                    min={0.1}
-                    step={0.1}
-                    value={config.toleranceRadius}
-                    onChange={(e) =>
-                      onChange({
-                        ...config,
-                        toleranceRadius: Number(e.target.value),
-                      })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    El estudiante acertará si marca dentro de este radio del
-                    punto correcto
+                {isSelectingPoint && (
+                  <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                    Haz clic en el gráfico para marcar el punto correcto
                   </p>
+                )}
+
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">X</Label>
+                    <Input
+                      type="number"
+                      step={0.1}
+                      value={config.correctPoint?.x ?? 0}
+                      onChange={(e) =>
+                        onChange({
+                          ...config,
+                          correctPoint: {
+                            x: Number(e.target.value),
+                            y: config.correctPoint?.y ?? 0,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">Y</Label>
+                    <Input
+                      type="number"
+                      step={0.1}
+                      value={config.correctPoint?.y ?? 0}
+                      onChange={(e) =>
+                        onChange({
+                          ...config,
+                          correctPoint: {
+                            x: config.correctPoint?.x ?? 0,
+                            y: Number(e.target.value),
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground">Tolerancia</Label>
+                    <Input
+                      type="number"
+                      min={0.1}
+                      step={0.1}
+                      value={config.toleranceRadius}
+                      onChange={(e) =>
+                        onChange({
+                          ...config,
+                          toleranceRadius: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-              </>
+              </div>
+            )}
+
+            {/* Function answer config */}
+            {config.answerType === "function" && (
+              <div className="space-y-3 p-3 rounded-lg bg-gray-50 border">
+                <Label className="text-sm">Selecciona la función correcta</Label>
+
+                {(config.functions || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">
+                    No hay funciones. Agrega funciones en la pestaña "Funciones" primero.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {(config.functions || []).map((func) => (
+                      <button
+                        key={func.id}
+                        type="button"
+                        onClick={() => onChange({ ...config, correctFunctionId: func.id })}
+                        className={cn(
+                          "w-full p-2 rounded-lg border text-left flex items-center gap-2 transition-all",
+                          config.correctFunctionId === func.id
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <div
+                          className="w-4 h-4 rounded-full shrink-0"
+                          style={{ backgroundColor: func.color }}
+                        />
+                        <span className="font-mono text-sm">y = {func.expression}</span>
+                        {config.correctFunctionId === func.id && (
+                          <span className="ml-auto text-green-600 text-xs">✓ Correcta</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Area answer config */}
+            {config.answerType === "area" && (
+              <div className="space-y-3 p-3 rounded-lg bg-gray-50 border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Área correcta</Label>
+                  <Button
+                    type="button"
+                    variant={isSelectingArea ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setIsSelectingArea(!isSelectingArea)
+                      setAreaStart(null)
+                      setActiveLine(null)
+                    }}
+                  >
+                    <Grid3X3 className="h-4 w-4 mr-1" />
+                    {isSelectingArea ? (areaStart ? "Clic para 2do punto" : "Clic para 1er punto") : "Marcar área"}
+                  </Button>
+                </div>
+
+                {isSelectingArea && (
+                  <p className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                    {areaStart
+                      ? "Haz clic en el gráfico para marcar la esquina opuesta del área"
+                      : "Haz clic en el gráfico para marcar la primera esquina del área"}
+                  </p>
+                )}
+
+                {config.correctArea && (
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="p-2 bg-white rounded border">
+                      <span className="text-muted-foreground">Desde:</span>
+                      <span className="font-mono ml-1">({config.correctArea.x1}, {config.correctArea.y1})</span>
+                    </div>
+                    <div className="p-2 bg-white rounded border">
+                      <span className="text-muted-foreground">Hasta:</span>
+                      <span className="font-mono ml-1">({config.correctArea.x2}, {config.correctArea.y2})</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* No interactive mode notice */}
+            {!config.isInteractive && !config.answerType && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Selecciona un tipo de respuesta para hacer el gráfico interactivo
+              </p>
             )}
           </TabsContent>
         </Tabs>

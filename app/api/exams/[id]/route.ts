@@ -5,6 +5,12 @@ import { API_CONFIG } from "@/lib/api-config"
 import type { Exam } from "@/lib/types"
 
 // GET /api/exams/[id] - Get exam by ID with details
+// Response (camelCase):
+// {
+//   id, teacherId, subjectId, title, description, durationMinutes, createdAt, updatedAt,
+//   config: { shuffleQuestions, shuffleOptions, showResultsImmediately, allowReview, penaltyPerWrongAnswer, passingPercentage },
+//   questions: [{ id, examId, questionId, questionOrder, weight, bankQuestion }]
+// }
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,19 +25,37 @@ export async function GET(
       }
 
       // Get bank questions for this exam (in real implementation, these would be exam-specific)
-      const questionsWithDetails = MOCK_DATA.bankQuestions.map((bq, index) => ({
+      const questionsWithDetails = MOCK_DATA.bankQuestions.slice(0, 5).map((bq, index) => ({
         id: `eq-${bq.id}`,
-        exam_id: id,
-        bank_question_id: bq.id,
-        question_order: index + 1,
+        examId: id,
+        questionId: bq.id,
+        questionOrder: index + 1,
         weight: bq.weight || 1,
-        bank_question: bq,
+        bankQuestion: bq,
       }))
 
-      return NextResponse.json({
-        ...exam,
+      // Transform exam to camelCase if needed
+      const examResponse = {
+        id: exam.id,
+        teacherId: (exam as any).teacherId || (exam as any).teacher_id,
+        subjectId: (exam as any).subjectId || (exam as any).subject_id || (exam as any).level_id,
+        title: exam.title,
+        description: exam.description,
+        durationMinutes: (exam as any).durationMinutes || (exam as any).duration_minutes,
+        createdAt: (exam as any).createdAt || (exam as any).created_at,
+        updatedAt: (exam as any).updatedAt || (exam as any).updated_at,
+        config: (exam as any).config || {
+          shuffleQuestions: false,
+          shuffleOptions: true,
+          showResultsImmediately: true,
+          allowReview: true,
+          penaltyPerWrongAnswer: null,
+          passingPercentage: 60,
+        },
         questions: questionsWithDetails,
-      })
+      }
+
+      return NextResponse.json(examResponse)
     } else {
       const response = await apiClient.get<Exam>(API_CONFIG.ENDPOINTS.EXAM_BY_ID(id))
       return NextResponse.json(response)
@@ -43,6 +67,12 @@ export async function GET(
 }
 
 // PUT /api/exams/[id] - Update exam
+// Expected payload (camelCase):
+// {
+//   title, description, subjectId, durationMinutes,
+//   config: { shuffleQuestions, shuffleOptions, showResultsImmediately, allowReview, penaltyPerWrongAnswer, passingPercentage },
+//   questions: [{ questionId, weight, questionOrder }]
+// }
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,7 +91,7 @@ export async function PUT(
         ...MOCK_DATA.exams[index],
         ...body,
         id,
-        updated_at: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }
 
       MOCK_DATA.exams[index] = updatedExam as Exam

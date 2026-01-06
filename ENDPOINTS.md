@@ -352,6 +352,15 @@ Eliminar grupo.
 
 ## 📝 Exámenes
 
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/exams` | Listar exámenes del profesor |
+| GET | `/exams/:id` | Obtener examen con detalles y preguntas |
+| POST | `/exams/create` | Crear nuevo examen |
+| PUT | `/exams/:id` | Actualizar examen |
+| DELETE | `/exams/:id` | Eliminar examen |
+| POST | `/exams/assign` | Asignar examen a estudiantes |
+
 ### GET `/exams`
 Obtener lista de exámenes del profesor.
 
@@ -360,13 +369,13 @@ Obtener lista de exámenes del profesor.
 [
   {
     "id": "string",
-    "teacher_id": "string",
-    "level_id": "string | null",
+    "teacherId": "string",
+    "subjectId": "string | null",
     "title": "string",
     "description": "string | null",
-    "duration_minutes": "number | null",
-    "created_at": "string (ISO)",
-    "updated_at": "string (ISO)"
+    "durationMinutes": "number | null",
+    "createdAt": "string (ISO)",
+    "updatedAt": "string (ISO)"
   }
 ]
 ```
@@ -380,29 +389,29 @@ Obtener un examen con detalles.
 ```json
 {
   "id": "string",
-  "teacher_id": "string",
-  "level_id": "string | null",
+  "teacherId": "string",
+  "subjectId": "string | null",
   "title": "string",
   "description": "string | null",
-  "duration_minutes": "number | null",
-  "created_at": "string (ISO)",
-  "updated_at": "string (ISO)",
+  "durationMinutes": "number | null",
+  "createdAt": "string (ISO)",
+  "updatedAt": "string (ISO)",
   "config": {
-    "shuffle_questions": "boolean",
-    "shuffle_options": "boolean",
-    "show_results_immediately": "boolean",
-    "allow_review": "boolean",
-    "penalty_per_wrong_answer": "number | null",
-    "passing_percentage": "number"
+    "shuffleQuestions": "boolean",
+    "shuffleOptions": "boolean",
+    "showResultsImmediately": "boolean",
+    "allowReview": "boolean",
+    "penaltyPerWrongAnswer": "number | null",
+    "passingPercentage": "number"
   },
   "questions": [
     {
       "id": "string",
-      "exam_id": "string",
-      "bank_question_id": "string",
-      "question_order": "number",
+      "examId": "string",
+      "questionId": "string",
+      "questionOrder": "number",
       "weight": "number",
-      "bank_question": "BankQuestion"
+      "bankQuestion": "BankQuestion"
     }
   ]
 }
@@ -416,24 +425,28 @@ Crear nuevo examen.
 **Payload:**
 ```json
 {
-  "title": "string",
-  "description": "string | null",
-  "level_id": "string | null",
-  "duration_minutes": "number | null",
-  "teacher_id": "string",
+  "title": "Examen Parcial 1",
+  "description": "Examen sobre los temas 1-3",
+  "subjectId": "uuid-asignatura",
+  "durationMinutes": 60,
   "config": {
-    "shuffle_questions": "boolean",
-    "shuffle_options": "boolean",
-    "show_results_immediately": "boolean",
-    "allow_review": "boolean",
-    "penalty_per_wrong_answer": "number | null",
-    "passing_percentage": "number"
+    "shuffleQuestions": false,
+    "shuffleOptions": true,
+    "showResultsImmediately": true,
+    "allowReview": true,
+    "penaltyPerWrongAnswer": null,
+    "passingPercentage": 60
   },
   "questions": [
     {
-      "bank_question_id": "string",
-      "weight": "number",
-      "question_order": "number"
+      "questionId": "uuid-pregunta-1",
+      "weight": 1,
+      "questionOrder": 1
+    },
+    {
+      "questionId": "uuid-pregunta-2",
+      "weight": 2,
+      "questionOrder": 2
     }
   ]
 }
@@ -444,23 +457,79 @@ Crear nuevo examen.
 {
   "exam": {
     "id": "string",
-    "teacher_id": "string",
-    "level_id": "string | null",
+    "teacherId": "string",
+    "subjectId": "string | null",
     "title": "string",
     "description": "string | null",
-    "duration_minutes": "number | null",
-    "created_at": "string (ISO)",
-    "updated_at": "string (ISO)"
+    "durationMinutes": "number | null",
+    "createdAt": "string (ISO)",
+    "updatedAt": "string (ISO)"
   },
   "questions": [
     {
       "id": "string",
-      "exam_id": "string",
-      "bank_question_id": "string",
-      "question_order": "number",
+      "examId": "string",
+      "questionId": "string",
+      "questionOrder": "number",
       "weight": "number"
     }
   ]
+}
+```
+
+---
+
+### PUT `/exams/{id}`
+Actualizar examen existente.
+
+**Payload:**
+```json
+{
+  "title": "Examen Parcial 1 - Actualizado",
+  "description": "Descripción actualizada",
+  "subjectId": "uuid-asignatura",
+  "durationMinutes": 90,
+  "config": {
+    "shuffleQuestions": true,
+    "shuffleOptions": true,
+    "showResultsImmediately": false,
+    "allowReview": true,
+    "penaltyPerWrongAnswer": 0.25,
+    "passingPercentage": 70
+  },
+  "questions": [
+    {
+      "questionId": "uuid-pregunta-1",
+      "weight": 2,
+      "questionOrder": 1
+    }
+  ]
+}
+```
+
+**Respuesta:**
+```json
+{
+  "id": "string",
+  "teacherId": "string",
+  "subjectId": "string | null",
+  "title": "string",
+  "description": "string | null",
+  "durationMinutes": "number | null",
+  "createdAt": "string (ISO)",
+  "updatedAt": "string (ISO)"
+}
+```
+
+---
+
+### DELETE `/exams/{id}`
+Eliminar examen.
+
+**Respuesta:**
+```json
+{
+  "success": true
 }
 ```
 
@@ -472,9 +541,8 @@ Asignar examen a estudiantes.
 **Payload:**
 ```json
 {
-  "exam_id": "string",
-  "student_ids": ["string"],
-  "exam_assignment_id": "string"
+  "examId": "uuid-examen",
+  "studentIds": ["uuid-estudiante-1", "uuid-estudiante-2"]
 }
 ```
 
@@ -483,9 +551,9 @@ Asignar examen a estudiantes.
 {
   "assignments": [
     {
-      "student_id": "string",
-      "magic_token": "string",
-      "magic_link": "string"
+      "studentId": "string",
+      "magicToken": "string",
+      "magicLink": "string"
     }
   ]
 }

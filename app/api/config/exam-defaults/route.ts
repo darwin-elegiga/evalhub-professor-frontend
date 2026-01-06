@@ -4,14 +4,14 @@ import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type { ExamDefaultConfig } from "@/lib/types"
 
-// Default configuration values (fallback)
+// Default configuration values (fallback) - using camelCase
 const DEFAULT_EXAM_CONFIG: ExamDefaultConfig = {
-  shuffle_questions: false,
-  shuffle_options: true,
-  show_results_immediately: false,
-  penalty_enabled: false,
-  penalty_value: 0.25,
-  passing_percentage: 60,
+  shuffleQuestions: false,
+  shuffleOptions: true,
+  showResultsImmediately: false,
+  penaltyEnabled: false,
+  penaltyValue: 0.25,
+  passingPercentage: 60,
 }
 
 // GET /api/config/exam-defaults - Get default exam configuration

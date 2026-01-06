@@ -154,3 +154,30 @@ export const apiClient = {
   delete: <T>(endpoint: string) =>
     fetchApi<T>(endpoint, { method: 'DELETE' }),
 }
+
+// Server-side API client for use in API routes (receives token as parameter)
+export async function serverFetch<T>(
+  endpoint: string,
+  options: RequestInit & { token?: string } = {}
+): Promise<T> {
+  const { token, ...fetchOptions } = options
+  const url = `${API_CONFIG.BASE_URL}${endpoint}`
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...fetchOptions.headers,
+  }
+
+  const response = await fetch(url, {
+    ...fetchOptions,
+    headers,
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: "Error desconocido" }))
+    throw new ApiError(response.status, error.message || "Error en la petición", error)
+  }
+
+  return response.json()
+}

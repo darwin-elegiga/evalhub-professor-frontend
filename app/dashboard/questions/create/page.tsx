@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type {
   Subject,
+  QuestionTopic,
   QuestionType,
   QuestionDifficulty,
   MultipleChoiceConfig,
@@ -71,7 +72,8 @@ const DIFFICULTY_OPTIONS: { value: QuestionDifficulty; label: string }[] = [
 const questionSchema = z.object({
   title: z.string().min(1, "El título es requerido"),
   content: z.string().min(1, "El enunciado es requerido"),
-  subject_id: z.string().optional(),
+  subjectId: z.string().optional(),
+  topicId: z.string().optional(),
   question_type: z.enum(["multiple_choice", "numeric", "graph_click", "image_hotspot", "open_text"]),
   difficulty: z.enum(["easy", "medium", "hard"]),
   estimated_time_minutes: z.number().min(1).max(120).optional(),
@@ -91,6 +93,7 @@ export default function CreateQuestionPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [topics, setTopics] = useState<QuestionTopic[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -141,7 +144,8 @@ export default function CreateQuestionPage() {
     defaultValues: {
       title: "",
       content: "",
-      subject_id: "",
+      subjectId: "",
+      topicId: "",
       question_type: "multiple_choice",
       difficulty: "medium",
       estimated_time_minutes: 5,
@@ -151,6 +155,12 @@ export default function CreateQuestionPage() {
   })
 
   const questionType = watch("question_type")
+  const selectedSubjectId = watch("subjectId")
+
+  // Filter topics by selected subject
+  const filteredTopics = selectedSubjectId
+    ? topics.filter((t) => t.subjectId === selectedSubjectId)
+    : []
 
   useEffect(() => {
     if (!loading && !user) {
@@ -168,12 +178,39 @@ export default function CreateQuestionPage() {
     try {
       if (USE_MOCK_DATA) {
         setSubjects(MOCK_DATA.subjects)
+        setTopics(MOCK_DATA.topics.map((t: any) => ({
+          id: t.id,
+          teacherId: t.teacherId || t.teacher_id,
+          subjectId: t.subjectId || t.subject_id,
+          name: t.name,
+          description: t.description,
+          color: t.color,
+          createdAt: t.createdAt || t.created_at,
+        })))
       } else {
-        const data = await apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS)
-        setSubjects(data)
+        try {
+          const [subjectsData, topicsData] = await Promise.all([
+            apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
+            apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
+          ])
+          setSubjects(subjectsData)
+          setTopics(topicsData)
+        } catch (apiError) {
+          console.warn("Error loading from API, using mock data as fallback:", apiError)
+          setSubjects(MOCK_DATA.subjects)
+          setTopics(MOCK_DATA.topics.map((t: any) => ({
+            id: t.id,
+            teacherId: t.teacherId || t.teacher_id,
+            subjectId: t.subjectId || t.subject_id,
+            name: t.name,
+            description: t.description,
+            color: t.color,
+            createdAt: t.createdAt || t.created_at,
+          })))
+        }
       }
     } catch (error) {
-      console.error("Error loading subjects:", error)
+      console.error("Error loading data:", error)
     } finally {
       setLoadingData(false)
     }
@@ -283,8 +320,8 @@ export default function CreateQuestionPage() {
       const questionData = {
         title: data.title,
         content: data.content,
-        subjectId: data.subject_id || null,
-        topicId: null,
+        subjectId: data.subjectId || null,
+        topicId: data.topicId || null,
         questionType: data.question_type,
         difficulty: data.difficulty,
         estimatedTimeMinutes: data.estimated_time_minutes,
@@ -374,29 +411,73 @@ export default function CreateQuestionPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Asignatura</Label>
-                <Controller
-                  name="subject_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una asignatura" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map((subject) => (
-                          <SelectItem key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Asignatura</Label>
+                  <Controller
+                    name="subjectId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          // Clear topic when subject changes
+                          setValue("topicId", "")
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona una asignatura" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tema</Label>
+                  <Controller
+                    name="topicId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={!selectedSubjectId || filteredTopics.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={
+                            !selectedSubjectId
+                              ? "Primero selecciona una asignatura"
+                              : filteredTopics.length === 0
+                                ? "No hay temas para esta asignatura"
+                                : "Selecciona un tema"
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredTopics.map((topic) => (
+                            <SelectItem key={topic.id} value={topic.id}>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: topic.color }}
+                                />
+                                {topic.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">

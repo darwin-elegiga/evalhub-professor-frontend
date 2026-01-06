@@ -44,12 +44,12 @@ export interface AnswerOption {
 
 export interface QuestionTopic {
   id: string
-  teacher_id: string
-  subject_id: string // Relación con la asignatura
+  teacherId: string
+  subjectId: string // Relación con la asignatura
   name: string
   description: string | null
   color: string // Para UI (e.g., "blue", "green", "red")
-  created_at: string
+  createdAt: string
 }
 
 // ============================================
@@ -60,48 +60,48 @@ export interface MultipleChoiceConfig {
   options: {
     id: string
     text: string // HTML from Tiptap
-    is_correct: boolean
+    isCorrect: boolean
     order: number
   }[]
-  allow_multiple: boolean // Permitir selección múltiple
-  shuffle_options: boolean // Mezclar opciones al mostrar
+  allowMultiple: boolean // Permitir selección múltiple
+  shuffleOptions: boolean // Mezclar opciones al mostrar
 }
 
 export interface NumericConfig {
-  correct_value: number
+  correctValue: number
   tolerance: number // Porcentaje o valor absoluto
-  tolerance_type: "percentage" | "absolute"
+  toleranceType: "percentage" | "absolute"
   unit: string | null // Unidad esperada (e.g., "m/s", "kg")
-  show_unit_input: boolean
+  showUnitInput: boolean
 }
 
 export interface GraphClickConfig {
-  graph_type: "cartesian" | "polar" | "custom_image"
-  image_url: string | null // Para gráficos personalizados
-  correct_point: { x: number; y: number }
-  tolerance_radius: number // Radio de tolerancia en píxeles o unidades
-  x_range: [number, number]
-  y_range: [number, number]
-  grid_visible: boolean
-  axis_labels: { x: string; y: string }
+  graphType: "cartesian" | "polar" | "custom_image"
+  imageUrl: string | null // Para gráficos personalizados
+  correctPoint: { x: number; y: number }
+  toleranceRadius: number // Radio de tolerancia en píxeles o unidades
+  xRange: [number, number]
+  yRange: [number, number]
+  gridVisible: boolean
+  axisLabels: { x: string; y: string }
 }
 
 export interface ImageHotspotConfig {
-  image_url: string
+  imageUrl: string
   hotspots: {
     id: string
     type: "circle" | "rectangle" | "polygon"
     coordinates: number[] // [x, y, radius] para círculo, [x1, y1, x2, y2] para rectángulo, etc.
-    is_correct: boolean
+    isCorrect: boolean
     label: string | null
   }[]
-  allow_multiple_selections: boolean
+  allowMultipleSelections: boolean
 }
 
 export interface OpenTextConfig {
-  max_length: number | null
+  maxLength: number | null
   placeholder: string | null
-  allow_latex: boolean
+  allowLatex: boolean
   keywords: string[] // Palabras clave para auto-evaluación parcial
 }
 
@@ -150,14 +150,14 @@ export interface BankQuestion {
 // Pregunta dentro de un examen (referencia a BankQuestion)
 export interface ExamQuestion {
   id: string
-  exam_id: string
-  bank_question_id: string
-  question_order: number
+  examId: string
+  questionId: string // ID de la pregunta del banco
+  questionOrder: number
   weight: number // Peso relativo (puede diferir del weight del banco)
 
   // Configuración específica para este examen
-  shuffle_options?: boolean // Override para este examen
+  shuffleOptions?: boolean // Override para este examen
 
   // Relación expandida (para queries)
-  bank_question?: BankQuestion
+  bankQuestion?: BankQuestion
 }

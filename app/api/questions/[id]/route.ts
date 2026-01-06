@@ -4,6 +4,26 @@ import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type { BankQuestion } from "@/lib/types"
 
+// Helper to transform mock data (snake_case) to API format (camelCase)
+const transformQuestion = (q: any): BankQuestion => ({
+  id: q.id,
+  teacherId: q.teacherId || q.teacher_id,
+  subjectId: q.subjectId || q.subject_id || null,
+  topicId: q.topicId || q.topic_id || null,
+  title: q.title,
+  content: q.content,
+  questionType: q.questionType || q.question_type,
+  typeConfig: q.typeConfig || q.type_config,
+  difficulty: q.difficulty,
+  estimatedTimeMinutes: q.estimatedTimeMinutes || q.estimated_time_minutes || null,
+  tags: q.tags || [],
+  weight: q.weight || 1,
+  createdAt: q.createdAt || q.created_at,
+  updatedAt: q.updatedAt || q.updated_at,
+  timesUsed: q.timesUsed || q.times_used || 0,
+  averageScore: q.averageScore || q.average_score || null,
+})
+
 // GET /api/questions/[id] - Get a single question
 export async function GET(
   request: NextRequest,
@@ -17,7 +37,7 @@ export async function GET(
       if (!question) {
         return NextResponse.json({ error: "Question not found" }, { status: 404 })
       }
-      return NextResponse.json(question)
+      return NextResponse.json(transformQuestion(question))
     } else {
       const response = await apiClient.get<BankQuestion>(`${API_CONFIG.ENDPOINTS.QUESTIONS}/${id}`)
       return NextResponse.json(response)
@@ -29,6 +49,7 @@ export async function GET(
 }
 
 // PUT /api/questions/[id] - Update a question
+// Payload (all optional): { subjectId, topicId, title, content, questionType, typeConfig, difficulty, estimatedTimeMinutes, tags, weight }
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -43,15 +64,16 @@ export async function PUT(
         return NextResponse.json({ error: "Question not found" }, { status: 404 })
       }
 
-      const updatedQuestion: BankQuestion = {
-        ...MOCK_DATA.bankQuestions[index],
+      const existing = MOCK_DATA.bankQuestions[index]
+      const updatedQuestion = {
+        ...existing,
         ...body,
         id, // Ensure ID doesn't change
-        updated_at: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }
 
-      MOCK_DATA.bankQuestions[index] = updatedQuestion
-      return NextResponse.json(updatedQuestion)
+      MOCK_DATA.bankQuestions[index] = updatedQuestion as any
+      return NextResponse.json(transformQuestion(updatedQuestion))
     } else {
       const response = await apiClient.put<BankQuestion>(
         `${API_CONFIG.ENDPOINTS.QUESTIONS}/${id}`,
@@ -66,6 +88,7 @@ export async function PUT(
 }
 
 // DELETE /api/questions/[id] - Delete a question
+// Response: 204 No Content
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -80,10 +103,10 @@ export async function DELETE(
       }
 
       MOCK_DATA.bankQuestions.splice(index, 1)
-      return NextResponse.json({ success: true })
+      return new NextResponse(null, { status: 204 })
     } else {
       await apiClient.delete(`${API_CONFIG.ENDPOINTS.QUESTIONS}/${id}`)
-      return NextResponse.json({ success: true })
+      return new NextResponse(null, { status: 204 })
     }
   } catch (error) {
     console.error("Error deleting question:", error)

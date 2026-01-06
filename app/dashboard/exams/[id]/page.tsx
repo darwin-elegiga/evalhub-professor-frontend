@@ -6,17 +6,47 @@ import { useRouter, useParams } from "next/navigation"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
-import type { Exam, Question, AnswerOption, ExamLevel } from "@/lib/types"
-import { ArrowLeft, Send, Edit, Trash2, Check, Download } from "lucide-react"
+import type { Exam, BankQuestion, Subject, ExamConfig, QuestionType, QuestionDifficulty } from "@/lib/types"
+import { ArrowLeft, Send, Download, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LatexPreview } from "@/components/latex-preview"
 import Link from "next/link"
 import { downloadExam } from "@/lib/export-import"
 
+const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+  multiple_choice: "Opción Múltiple",
+  numeric: "Numérica",
+  graph_click: "Click en Gráfico",
+  image_hotspot: "Zona en Imagen",
+  open_text: "Respuesta Abierta",
+}
+
+const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
+  easy: "Fácil",
+  medium: "Medio",
+  hard: "Difícil",
+}
+
+const DIFFICULTY_COLORS: Record<QuestionDifficulty, string> = {
+  easy: "bg-green-100 text-green-800",
+  medium: "bg-yellow-100 text-yellow-800",
+  hard: "bg-red-100 text-red-800",
+}
+
+// Response from GET /exams/:id
+interface ExamQuestion {
+  id: string
+  examId: string
+  questionId: string
+  questionOrder: number
+  weight: number
+  question: BankQuestion
+}
+
 interface ExamWithDetails extends Exam {
-  questions?: (Question & { answer_options: AnswerOption[] })[]
+  config?: ExamConfig
+  questions?: ExamQuestion[]
 }
 
 export default function ExamDetailsPage() {
@@ -26,7 +56,7 @@ export default function ExamDetailsPage() {
   const examId = params.id as string
 
   const [exam, setExam] = useState<ExamWithDetails | null>(null)
-  const [level, setLevel] = useState<ExamLevel | null>(null)
+  const [subject, setSubject] = useState<Subject | null>(null)
   const [loadingExam, setLoadingExam] = useState(true)
 
   useEffect(() => {
@@ -46,32 +76,45 @@ export default function ExamDetailsPage() {
       if (USE_MOCK_DATA) {
         const foundExam = MOCK_DATA.exams.find((e) => e.id === examId)
         if (foundExam) {
-          const questions = MOCK_DATA.questions
-            .filter((q) => q.exam_id === examId)
-            .map((q) => ({
-              ...q,
-              answer_options: MOCK_DATA.answerOptions.filter(
-                (opt) => opt.question_id === q.id
-              ),
-            }))
-          setExam({ ...foundExam, questions })
+          // Transform mock questions to match API response format
+          const examQuestions: ExamQuestion[] = MOCK_DATA.questions
+            .filter((q: any) => q.exam_id === examId)
+            .map((q: any, index: number) => {
+              const bankQuestion = MOCK_DATA.bankQuestions.find((bq: any) => bq.id === q.question_id)
+              return {
+                id: q.id,
+                examId: examId,
+                questionId: q.question_id || q.id,
+                questionOrder: index + 1,
+                weight: q.points || 1,
+                question: bankQuestion || q,
+              }
+            })
+          setExam({ ...foundExam, questions: examQuestions } as ExamWithDetails)
 
-          if (foundExam.level_id) {
-            const foundLevel = MOCK_DATA.levels.find(
-              (l) => l.id === foundExam.level_id
+          if (foundExam.subjectId) {
+            const foundSubject = MOCK_DATA.subjects.find(
+              (s) => s.id === foundExam.subjectId
             )
-            setLevel(foundLevel || null)
+            setSubject(foundSubject || null)
           }
         }
       } else {
-        const [examData, levelsData] = await Promise.all([
-          apiClient.get<ExamWithDetails>(`${API_CONFIG.ENDPOINTS.EXAMS}/${examId}`),
-          apiClient.get<ExamLevel[]>(API_CONFIG.ENDPOINTS.LEVELS),
-        ])
+        // Fetch exam details from backend
+        const examData = await apiClient.get<ExamWithDetails>(
+          API_CONFIG.ENDPOINTS.EXAM_BY_ID(examId)
+        )
         setExam(examData)
-        if (examData.level_id) {
-          const foundLevel = levelsData.find((l) => l.id === examData.level_id)
-          setLevel(foundLevel || null)
+
+        // Fetch subject if exam has one
+        if (examData.subjectId) {
+          try {
+            const subjectsData = await apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS)
+            const foundSubject = subjectsData.find((s) => s.id === examData.subjectId)
+            setSubject(foundSubject || null)
+          } catch {
+            // Subject fetch failed, continue without it
+          }
         }
       }
     } catch (error) {
@@ -113,11 +156,17 @@ export default function ExamDetailsPage() {
     )
   }
 
-  const totalPoints = exam.questions?.reduce((sum, q) => sum + q.points, 0) || 0
+  const totalWeight = exam.questions?.reduce((sum, q) => sum + q.weight, 0) || 0
 
   const handleExport = () => {
     if (!exam || !exam.questions) return
-    downloadExam(exam, exam.questions)
+    // Transform to format expected by downloadExam
+    const questionsForExport = exam.questions.map((eq) => ({
+      ...eq.question,
+      weight: eq.weight,
+      questionOrder: eq.questionOrder,
+    }))
+    downloadExam(exam, questionsForExport)
   }
 
   return (
@@ -134,7 +183,7 @@ export default function ExamDetailsPage() {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold text-gray-900">{exam.title}</h1>
-              {level && <Badge variant="secondary">{level.name}</Badge>}
+              {subject && <Badge variant="secondary">{subject.name}</Badge>}
             </div>
             <p className="mt-2 text-muted-foreground">
               {exam.description || "Sin descripción"}
@@ -161,8 +210,8 @@ export default function ExamDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {exam.duration_minutes || "Sin límite"}{" "}
-                {exam.duration_minutes && "min"}
+                {exam.durationMinutes || "Sin límite"}{" "}
+                {exam.durationMinutes && "min"}
               </div>
             </CardContent>
           </Card>
@@ -178,10 +227,10 @@ export default function ExamDetailsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Puntos Totales</CardTitle>
+              <CardTitle className="text-sm font-medium">Peso Total</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalPoints}</div>
+              <div className="text-2xl font-bold">{totalWeight}</div>
             </CardContent>
           </Card>
         </div>
@@ -189,65 +238,46 @@ export default function ExamDetailsPage() {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Preguntas</h2>
           {exam.questions && exam.questions.length > 0 ? (
-            exam.questions.map((question, index) => (
-              <Card key={question.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">
-                      Pregunta {index + 1}
-                    </CardTitle>
-                    <Badge>{question.points} pts</Badge>
-                  </div>
-                  <CardDescription>{question.question_text}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {question.question_latex && (
-                    <div className="rounded-md border bg-white p-4">
-                      <LatexPreview latex={question.question_latex} />
-                    </div>
-                  )}
+            exam.questions
+              .sort((a, b) => a.questionOrder - b.questionOrder)
+              .map((examQuestion, index) => {
+                const question = examQuestion.question
 
-                  {question.answer_options && question.answer_options.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Opciones de respuesta:
-                      </p>
-                      {question.answer_options.map((option, optIndex) => (
-                        <div
-                          key={option.id}
-                          className={`flex items-start gap-2 rounded-md border p-3 ${
-                            option.is_correct
-                              ? "border-green-500 bg-green-50"
-                              : ""
-                          }`}
-                        >
-                          <span className="font-medium">
-                            {String.fromCharCode(65 + optIndex)}.
-                          </span>
-                          <div className="flex-1">
-                            <span>{option.option_text}</span>
-                            {option.option_latex && (
-                              <div className="mt-2 rounded-md bg-white p-2">
-                                <LatexPreview latex={option.option_latex} />
-                              </div>
-                            )}
-                          </div>
-                          {option.is_correct && (
-                            <Badge
-                              variant="default"
-                              className="bg-green-500 gap-1"
-                            >
-                              <Check className="h-3 w-3" />
-                              Correcta
+                return (
+                  <Link
+                    key={examQuestion.id}
+                    href={`/dashboard/questions/${question.id}`}
+                    className="block"
+                  >
+                    <Card className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg">
+                              Pregunta {index + 1}: {question.title}
+                            </CardTitle>
+                            <Badge variant="outline" className="text-xs">
+                              {QUESTION_TYPE_LABELS[question.questionType]}
                             </Badge>
-                          )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={DIFFICULTY_COLORS[question.difficulty]}>
+                              {DIFFICULTY_LABELS[question.difficulty]}
+                            </Badge>
+                            <Badge>Peso: {examQuestion.weight}</Badge>
+                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+                        <CardDescription className="line-clamp-2">
+                          <span
+                            dangerouslySetInnerHTML={{ __html: question.content }}
+                          />
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                )
+              })
           ) : (
             <Card>
               <CardContent className="flex h-32 items-center justify-center">

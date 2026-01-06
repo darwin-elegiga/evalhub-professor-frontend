@@ -4,6 +4,17 @@ import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type { QuestionTopic } from "@/lib/types"
 
+// Helper to transform mock data (snake_case) to API format (camelCase)
+const transformTopic = (t: any): QuestionTopic => ({
+  id: t.id,
+  teacherId: t.teacherId || t.teacher_id,
+  subjectId: t.subjectId || t.subject_id,
+  name: t.name,
+  description: t.description,
+  color: t.color,
+  createdAt: t.createdAt || t.created_at,
+})
+
 // GET /api/topics/[id] - Get topic by ID
 export async function GET(
   request: NextRequest,
@@ -17,7 +28,7 @@ export async function GET(
       if (!topic) {
         return NextResponse.json({ error: "Topic not found" }, { status: 404 })
       }
-      return NextResponse.json(topic)
+      return NextResponse.json(transformTopic(topic))
     } else {
       const response = await apiClient.get<QuestionTopic>(API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id))
       return NextResponse.json(response)
@@ -29,6 +40,7 @@ export async function GET(
 }
 
 // PUT /api/topics/[id] - Update topic
+// Payload: { name?, description?, color?, subjectId? }
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -43,14 +55,15 @@ export async function PUT(
         return NextResponse.json({ error: "Topic not found" }, { status: 404 })
       }
 
-      const updatedTopic: QuestionTopic = {
-        ...MOCK_DATA.topics[index],
+      const existing = MOCK_DATA.topics[index]
+      const updatedTopic = {
+        ...existing,
         ...body,
         id,
       }
 
-      MOCK_DATA.topics[index] = updatedTopic
-      return NextResponse.json(updatedTopic)
+      MOCK_DATA.topics[index] = updatedTopic as any
+      return NextResponse.json(transformTopic(updatedTopic))
     } else {
       const response = await apiClient.put<QuestionTopic>(API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id), body)
       return NextResponse.json(response)

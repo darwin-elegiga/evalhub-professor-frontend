@@ -76,7 +76,7 @@ export default function ExamSettingsPage() {
 
   // Form data
   const [subjectForm, setSubjectForm] = useState({ name: "", description: "", color: "blue" })
-  const [topicForm, setTopicForm] = useState({ name: "", description: "", color: "blue", subject_id: "" })
+  const [topicForm, setTopicForm] = useState({ name: "", description: "", color: "blue", subjectId: "" })
   const [levelForm, setLevelForm] = useState({ name: "", description: "" })
 
   useEffect(() => {
@@ -169,11 +169,11 @@ export default function ExamSettingsPage() {
         name: topic.name,
         description: topic.description || "",
         color: topic.color,
-        subject_id: topic.subject_id
+        subjectId: topic.subjectId
       })
     } else {
       setEditingTopic(null)
-      setTopicForm({ name: "", description: "", color: "blue", subject_id: subjects[0]?.id || "" })
+      setTopicForm({ name: "", description: "", color: "blue", subjectId: subjects[0]?.id || "" })
     }
     setTopicDialogOpen(true)
   }
@@ -183,7 +183,7 @@ export default function ExamSettingsPage() {
       toast.error("El nombre es requerido")
       return
     }
-    if (!topicForm.subject_id) {
+    if (!topicForm.subjectId) {
       toast.error("Debes seleccionar una asignatura")
       return
     }
@@ -195,28 +195,28 @@ export default function ExamSettingsPage() {
         name: topicForm.name,
         description: topicForm.description || null,
         color: topicForm.color,
-        subject_id: topicForm.subject_id,
+        subjectId: topicForm.subjectId,
       }
       setTopics(topics.map(t => t.id === updated.id ? updated : t))
       if (USE_MOCK_DATA) {
         const idx = MOCK_DATA.topics.findIndex(t => t.id === updated.id)
-        if (idx >= 0) MOCK_DATA.topics[idx] = updated
+        if (idx >= 0) MOCK_DATA.topics[idx] = updated as any
       }
       toast.success("Tema actualizado")
     } else {
       // Create
       const newTopic: QuestionTopic = {
         id: crypto.randomUUID(),
-        teacher_id: user!.id,
-        subject_id: topicForm.subject_id,
+        teacherId: user!.id,
+        subjectId: topicForm.subjectId,
         name: topicForm.name,
         description: topicForm.description || null,
         color: topicForm.color,
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       }
       setTopics([...topics, newTopic])
       if (USE_MOCK_DATA) {
-        MOCK_DATA.topics.push(newTopic)
+        MOCK_DATA.topics.push(newTopic as any)
       }
       toast.success("Tema creado")
     }
@@ -394,7 +394,7 @@ export default function ExamSettingsPage() {
                               <p className="text-sm text-muted-foreground">{subject.description}</p>
                             )}
                             <p className="text-xs text-muted-foreground mt-1">
-                              {topics.filter(t => t.subject_id === subject.id).length} temas
+                              {topics.filter(t => t.subjectId === subject.id).length} temas
                             </p>
                           </div>
                         </div>
@@ -445,7 +445,7 @@ export default function ExamSettingsPage() {
                 ) : (
                   <div className="space-y-6">
                     {subjects.map((subject) => {
-                      const subjectTopics = topics.filter(t => t.subject_id === subject.id)
+                      const subjectTopics = topics.filter(t => t.subjectId === subject.id)
                       if (subjectTopics.length === 0) return null
 
                       return (
@@ -620,8 +620,8 @@ export default function ExamSettingsPage() {
             <div className="space-y-2">
               <Label>Asignatura</Label>
               <Select
-                value={topicForm.subject_id}
-                onValueChange={(value) => setTopicForm({ ...topicForm, subject_id: value })}
+                value={topicForm.subjectId}
+                onValueChange={(value) => setTopicForm({ ...topicForm, subjectId: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona una asignatura" />

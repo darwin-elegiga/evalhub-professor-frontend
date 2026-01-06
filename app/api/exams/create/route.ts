@@ -1,48 +1,60 @@
 import { NextRequest, NextResponse } from "next/server"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
+import { serverFetch } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 
+// POST /api/exams/create - Create new exam
+// Expected payload (camelCase):
+// {
+//   title: string,
+//   description: string | null,
+//   subjectId: string | null,
+//   durationMinutes: number | null,
+//   config: { shuffleQuestions, shuffleOptions, showResultsImmediately, allowReview, penaltyPerWrongAnswer, passingPercentage },
+//   questions: [{ questionId, weight, questionOrder }]
+// }
 export async function POST(request: NextRequest) {
   try {
+    // Get token from Authorization header
+    const authHeader = request.headers.get("Authorization")
+    const token = authHeader?.replace("Bearer ", "")
+
     const body = await request.json()
-    const { title, description, level_id, duration_minutes, teacher_id, questions } = body
+    const { title, description, subjectId, durationMinutes, config, questions } = body
 
     if (USE_MOCK_DATA) {
       // Create mock exam
       const newExam = {
         id: crypto.randomUUID(),
-        teacher_id,
-        level_id,
+        teacherId: "mock-teacher-id",
+        subjectId: subjectId || null,
         title,
-        description,
-        duration_minutes,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        description: description || null,
+        durationMinutes: durationMinutes || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        config: config || {
+          shuffleQuestions: false,
+          shuffleOptions: true,
+          showResultsImmediately: true,
+          allowReview: true,
+          penaltyPerWrongAnswer: null,
+          passingPercentage: 60,
+        },
       }
 
-      // Create mock questions with options
-      const createdQuestions = questions.map((q: any, index: number) => ({
-        id: crypto.randomUUID(),
-        exam_id: newExam.id,
-        question_text: q.question_text,
-        question_latex: q.question_latex || null,
-        question_image_url: q.question_image_url || null,
-        question_graph_data: q.question_graph_data || null,
-        question_order: index + 1,
-        points: q.points,
-        created_at: new Date().toISOString(),
-        answer_options: q.options.map((opt: any, optIndex: number) => ({
+      // Create mock exam questions
+      const createdQuestions = (questions || []).map((q: any, index: number) => {
+        const bankQuestion = MOCK_DATA.bankQuestions.find((bq) => bq.id === q.questionId)
+        return {
           id: crypto.randomUUID(),
-          question_id: q.id,
-          option_text: opt.option_text,
-          option_latex: opt.option_latex || null,
-          option_image_url: opt.option_image_url || null,
-          is_correct: opt.is_correct,
-          option_order: optIndex + 1,
-          created_at: new Date().toISOString(),
-        })),
-      }))
+          examId: newExam.id,
+          questionId: q.questionId,
+          questionOrder: q.questionOrder || index + 1,
+          weight: q.weight || 1,
+          bankQuestion: bankQuestion || null,
+        }
+      })
 
       // Add to mock data (in memory only - won't persist across requests)
       MOCK_DATA.exams.push(newExam as any)
@@ -52,8 +64,12 @@ export async function POST(request: NextRequest) {
         questions: createdQuestions,
       })
     } else {
-      // Call real backend
-      const response = await apiClient.post(API_CONFIG.ENDPOINTS.EXAMS_CREATE, body)
+      // Call real backend with camelCase payload
+      const response = await serverFetch(API_CONFIG.ENDPOINTS.EXAMS_CREATE, {
+        method: "POST",
+        body: JSON.stringify(body),
+        token,
+      })
       return NextResponse.json(response)
     }
   } catch (error) {

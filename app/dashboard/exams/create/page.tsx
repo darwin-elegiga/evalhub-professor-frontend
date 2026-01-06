@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import type {
-  ExamLevel,
+  Subject,
   BankQuestion,
   QuestionTopic,
   QuestionType,
@@ -93,7 +93,7 @@ interface SelectedQuestion {
 export default function CreateExamPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [levels, setLevels] = useState<ExamLevel[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [bankQuestions, setBankQuestions] = useState<BankQuestion[]>([])
   const [topics, setTopics] = useState<QuestionTopic[]>([])
   const [loadingData, setLoadingData] = useState(true)
@@ -102,7 +102,7 @@ export default function CreateExamPage() {
   // Exam form state
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [levelId, setLevelId] = useState("")
+  const [subjectId, setSubjectId] = useState("")
   const [durationMinutes, setDurationMinutes] = useState("")
 
   // Exam config state (valores por defecto como fallback, se actualizan desde el backend)
@@ -138,25 +138,68 @@ export default function CreateExamPage() {
     }
   }, [user])
 
+  // Reset topic filter when subject changes (selected topic may not belong to new subject)
+  useEffect(() => {
+    setBankTopicFilter("all")
+  }, [subjectId])
+
+  // Helper to transform mock data to camelCase
+  const transformQuestion = (q: any): BankQuestion => ({
+    id: q.id,
+    teacherId: q.teacherId || q.teacher_id,
+    subjectId: q.subjectId || q.subject_id || null,
+    topicId: q.topicId || q.topic_id || null,
+    title: q.title,
+    content: q.content,
+    questionType: q.questionType || q.question_type,
+    typeConfig: q.typeConfig || q.type_config,
+    difficulty: q.difficulty,
+    estimatedTimeMinutes: q.estimatedTimeMinutes || q.estimated_time_minutes || null,
+    tags: q.tags || [],
+    weight: q.weight || 1,
+    createdAt: q.createdAt || q.created_at,
+    updatedAt: q.updatedAt || q.updated_at,
+    timesUsed: q.timesUsed || q.times_used || 0,
+    averageScore: q.averageScore || q.average_score || null,
+  })
+
+  const transformTopic = (t: any): QuestionTopic => ({
+    id: t.id,
+    teacherId: t.teacherId || t.teacher_id,
+    subjectId: t.subjectId || t.subject_id,
+    name: t.name,
+    description: t.description,
+    color: t.color,
+    createdAt: t.createdAt || t.created_at,
+  })
+
   const loadData = async () => {
     try {
       if (USE_MOCK_DATA) {
-        setLevels(MOCK_DATA.levels)
-        setBankQuestions(MOCK_DATA.bankQuestions)
-        setTopics(MOCK_DATA.topics)
+        setSubjects(MOCK_DATA.subjects)
+        setBankQuestions(MOCK_DATA.bankQuestions.map(transformQuestion))
+        setTopics(MOCK_DATA.topics.map(transformTopic))
       } else {
-        // TODO: Implement real API calls for levels, questions, topics
+        // Load subjects, questions, and topics from API
+        const [subjectsData, questionsData, topicsData] = await Promise.all([
+          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
+          apiClient.get<BankQuestion[]>(API_CONFIG.ENDPOINTS.QUESTIONS),
+          apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
+        ])
+        setSubjects(subjectsData)
+        setBankQuestions(questionsData)
+        setTopics(topicsData)
       }
 
       // Cargar configuración por defecto de exámenes desde el backend
       try {
         const config = await apiClient.get<ExamDefaultConfig>(API_CONFIG.ENDPOINTS.EXAM_DEFAULT_CONFIG)
-        setShuffleQuestions(config.shuffle_questions)
-        setShuffleOptions(config.shuffle_options)
-        setShowResultsImmediately(config.show_results_immediately)
-        setPenaltyEnabled(config.penalty_enabled)
-        setPenaltyValue(config.penalty_value)
-        setPassingPercentage(config.passing_percentage)
+        setShuffleQuestions(config.shuffleQuestions)
+        setShuffleOptions(config.shuffleOptions)
+        setShowResultsImmediately(config.showResultsImmediately)
+        setPenaltyEnabled(config.penaltyEnabled)
+        setPenaltyValue(config.penaltyValue)
+        setPassingPercentage(config.passingPercentage)
       } catch (configError) {
         // Si falla la carga de configuración, se mantienen los valores por defecto
         console.warn("No se pudo cargar la configuración de exámenes, usando valores por defecto:", configError)
@@ -173,6 +216,12 @@ export default function CreateExamPage() {
     return topics.find((t) => t.id === id)
   }
 
+  // Filter topics by selected subject (for the bank filter dropdown)
+  const filteredTopics = useMemo(() => {
+    if (!subjectId) return topics
+    return topics.filter((t) => t.subjectId === subjectId)
+  }, [topics, subjectId])
+
   // Filter available questions (not already selected)
   const availableQuestions = useMemo(() => {
     const selectedIds = new Set(selectedQuestions.map((sq) => sq.bankQuestion.id))
@@ -180,17 +229,20 @@ export default function CreateExamPage() {
     return bankQuestions.filter((q) => {
       if (selectedIds.has(q.id)) return false
 
+      // Filter by exam's selected subject (if one is selected)
+      const matchesSubject = !subjectId || q.subjectId === subjectId
+
       const matchesSearch =
         bankSearch === "" ||
         q.title.toLowerCase().includes(bankSearch.toLowerCase()) ||
         q.tags.some((tag) => tag.toLowerCase().includes(bankSearch.toLowerCase()))
 
-      const matchesTopic = bankTopicFilter === "all" || q.topic_id === bankTopicFilter
+      const matchesTopic = bankTopicFilter === "all" || q.topicId === bankTopicFilter
       const matchesDifficulty = bankDifficultyFilter === "all" || q.difficulty === bankDifficultyFilter
 
-      return matchesSearch && matchesTopic && matchesDifficulty
+      return matchesSubject && matchesSearch && matchesTopic && matchesDifficulty
     })
-  }, [bankQuestions, selectedQuestions, bankSearch, bankTopicFilter, bankDifficultyFilter])
+  }, [bankQuestions, selectedQuestions, subjectId, bankSearch, bankTopicFilter, bankDifficultyFilter])
 
   const addQuestion = (question: BankQuestion) => {
     setSelectedQuestions([
@@ -231,7 +283,7 @@ export default function CreateExamPage() {
 
   const totalPoints = selectedQuestions.reduce((sum, sq) => sum + sq.weight, 0)
   const estimatedTime = selectedQuestions.reduce(
-    (sum, sq) => sum + (sq.bankQuestion.estimated_time_minutes || 0),
+    (sum, sq) => sum + (sq.bankQuestion.estimatedTimeMinutes || 0),
     0
   )
 
@@ -249,51 +301,48 @@ export default function CreateExamPage() {
     setIsSubmitting(true)
 
     try {
+      // Build payload with camelCase for backend
       const examData = {
         title,
-        description,
-        level_id: levelId || null,
-        duration_minutes: durationMinutes ? Number(durationMinutes) : null,
-        teacher_id: user!.id,
+        description: description || null,
+        subjectId: subjectId || null,
+        durationMinutes: durationMinutes ? Number(durationMinutes) : null,
         config: {
-          shuffle_questions: shuffleQuestions,
-          shuffle_options: shuffleOptions,
-          show_results_immediately: showResultsImmediately,
-          allow_review: true,
-          penalty_per_wrong_answer: penaltyEnabled ? penaltyValue : null,
-          passing_percentage: passingPercentage,
+          shuffleQuestions,
+          shuffleOptions,
+          showResultsImmediately,
+          allowReview: true,
+          penaltyPerWrongAnswer: penaltyEnabled ? penaltyValue : null,
+          passingPercentage,
         },
         questions: selectedQuestions.map((sq) => ({
-          bank_question_id: sq.bankQuestion.id,
+          questionId: sq.bankQuestion.id,
           weight: sq.weight,
-          question_order: sq.order,
+          questionOrder: sq.order,
         })),
       }
 
       if (USE_MOCK_DATA) {
         const newExam = {
           id: crypto.randomUUID(),
-          teacher_id: user!.id,
-          level_id: levelId || null,
+          teacherId: user!.id,
+          subjectId: subjectId || null,
           title,
           description,
-          duration_minutes: durationMinutes ? Number(durationMinutes) : null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          durationMinutes: durationMinutes ? Number(durationMinutes) : null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          config: examData.config,
         }
         MOCK_DATA.exams.push(newExam as any)
         toast.success("Examen creado exitosamente")
         router.push(`/dashboard/exams/${newExam.id}`)
       } else {
-        const response = await fetch("/api/exams/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(examData),
-        })
-
-        if (!response.ok) throw new Error("Error creating exam")
-
-        const data = await response.json()
+        // Call backend directly using apiClient (handles auth automatically)
+        const data = await apiClient.post<{ exam: { id: string } }>(
+          API_CONFIG.ENDPOINTS.EXAMS_CREATE,
+          examData
+        )
         toast.success("Examen creado exitosamente")
         router.push(`/dashboard/exams/${data.exam.id}`)
       }
@@ -419,15 +468,15 @@ export default function CreateExamPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Nivel</Label>
-                    <Select value={levelId} onValueChange={setLevelId}>
+                    <Label>Asignatura</Label>
+                    <Select value={subjectId} onValueChange={setSubjectId}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un nivel" />
+                        <SelectValue placeholder="Selecciona una asignatura" />
                       </SelectTrigger>
                       <SelectContent>
-                        {levels.map((level) => (
-                          <SelectItem key={level.id} value={level.id}>
-                            {level.name}
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id}>
+                            {subject.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -491,7 +540,7 @@ export default function CreateExamPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">Todos los temas</SelectItem>
-                              {topics.map((t) => (
+                              {filteredTopics.map((t) => (
                                 <SelectItem key={t.id} value={t.id}>
                                   <span className="flex items-center gap-2">
                                     <span
@@ -563,7 +612,7 @@ export default function CreateExamPage() {
                             </div>
                           ) : (
                             availableQuestions.map((question) => {
-                              const topic = getTopicById(question.topic_id)
+                              const topic = getTopicById(question.topicId)
                               const isExpanded = expandedQuestionId === question.id
                               const contentPreview = question.content
                                 .replace(/<[^>]*>/g, " ")
@@ -653,11 +702,11 @@ export default function CreateExamPage() {
                                           </span>
                                         )}
                                         <span>•</span>
-                                        <span>{QUESTION_TYPE_LABELS[question.question_type]}</span>
-                                        {question.estimated_time_minutes && (
+                                        <span>{QUESTION_TYPE_LABELS[question.questionType]}</span>
+                                        {question.estimatedTimeMinutes && (
                                           <>
                                             <span>•</span>
-                                            <span>~{question.estimated_time_minutes} min</span>
+                                            <span>~{question.estimatedTimeMinutes} min</span>
                                           </>
                                         )}
                                       </div>
@@ -684,7 +733,7 @@ export default function CreateExamPage() {
                 ) : (
                   <div className="space-y-2">
                     {selectedQuestions.map((sq, index) => {
-                      const topic = getTopicById(sq.bankQuestion.topic_id)
+                      const topic = getTopicById(sq.bankQuestion.topicId)
                       return (
                         <div
                           key={sq.id}

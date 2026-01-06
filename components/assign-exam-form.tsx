@@ -26,10 +26,10 @@ interface AssignExamFormProps {
 }
 
 interface MagicLink {
-  student_id: string
-  student_name: string
-  magic_token: string
-  url: string
+  studentId: string
+  studentName: string
+  magicToken: string
+  magicLink: string
 }
 
 export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) {
@@ -101,7 +101,7 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
 
   const copyAllLinks = async () => {
     const allLinks = magicLinks
-      .map((link) => `${link.student_name}: ${link.url}`)
+      .map((link) => `${link.studentName}: ${link.magicLink}`)
       .join("\n")
     await navigator.clipboard.writeText(allLinks)
     toast.success("Todos los enlaces copiados")
@@ -116,13 +116,13 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
     setIsLoading(true)
 
     try {
+      // Build payload with camelCase
       const response = await fetch("/api/exams/assign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          exam_id: exam.id,
-          student_ids: selectedStudents,
-          group_id: selectedGroupId,
+          examId: exam.id,
+          studentIds: selectedStudents,
         }),
       })
 
@@ -347,17 +347,17 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
 
           <div className="max-h-96 space-y-3 overflow-y-auto">
             {magicLinks.map((link) => (
-              <div key={link.student_id} className="rounded-md border p-4">
-                <div className="mb-2 font-medium">{link.student_name}</div>
+              <div key={link.studentId} className="rounded-md border p-4">
+                <div className="mb-2 font-medium">{link.studentName}</div>
                 <div className="flex gap-2">
-                  <Input value={link.url} readOnly className="flex-1 font-mono text-sm" />
+                  <Input value={link.magicLink} readOnly className="flex-1 font-mono text-sm" />
                   <Button
                     type="button"
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(link.url, link.magic_token)}
+                    onClick={() => copyToClipboard(link.magicLink, link.magicToken)}
                   >
-                    {copiedToken === link.magic_token ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {copiedToken === link.magicToken ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>

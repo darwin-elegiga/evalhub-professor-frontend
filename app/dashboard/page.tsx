@@ -11,18 +11,28 @@ import {
   Clock,
   Plus,
   ArrowUpRight,
+  HelpCircle,
 } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
+import {
+  type DashboardStats,
+  type Assignment,
+  safeFetch,
+  calculateAssignmentStats,
+} from "@/lib/dashboard-utils"
+import type { Exam, Student, BankQuestion } from "@/lib/types"
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     exams: 0,
     students: 0,
     assignments: 0,
     pending: 0,
+    questions: 0,
+    groups: 0,
   })
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -39,21 +49,28 @@ export default function DashboardPage() {
           exams: MOCK_DATA.exams.length,
           students: MOCK_DATA.students.length,
           assignments: MOCK_DATA.assignments.length,
-          pending: MOCK_DATA.assignments.filter((a) => a.status === "submitted")
-            .length,
+          pending: MOCK_DATA.assignments.filter((a) => a.status === "submitted").length,
+          questions: MOCK_DATA.bankQuestions?.length || 0,
+          groups: MOCK_DATA.studentGroups?.length || 0,
         })
       } else {
-        const [exams, students, assignments] = await Promise.all([
-          apiClient.get<any[]>(API_CONFIG.ENDPOINTS.EXAMS),
-          apiClient.get<any[]>(API_CONFIG.ENDPOINTS.STUDENTS),
-          apiClient.get<any[]>(API_CONFIG.ENDPOINTS.ASSIGNMENTS),
+        // Fetch each endpoint independently to handle partial failures
+        const [exams, students, assignments, questions] = await Promise.all([
+          safeFetch(() => apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS), []),
+          safeFetch(() => apiClient.get<Student[]>(API_CONFIG.ENDPOINTS.STUDENTS), []),
+          safeFetch(() => apiClient.get<Assignment[]>(API_CONFIG.ENDPOINTS.ASSIGNMENTS), []),
+          safeFetch(() => apiClient.get<BankQuestion[]>(API_CONFIG.ENDPOINTS.QUESTIONS), []),
         ])
+
+        const assignmentStats = calculateAssignmentStats(assignments)
+
         setStats({
           exams: exams.length,
           students: students.length,
-          assignments: assignments.length,
-          pending: assignments.filter((a: any) => a.status === "submitted")
-            .length,
+          assignments: assignmentStats.total,
+          pending: assignmentStats.submitted, // "submitted" = pending review
+          questions: questions.length,
+          groups: 0, // Groups are loaded separately if needed
         })
       }
     } catch (error) {
@@ -65,8 +82,8 @@ export default function DashboardPage() {
 
   const metrics = [
     { label: "Exámenes", value: stats.exams, href: "/dashboard/exams" },
+    { label: "Preguntas", value: stats.questions, href: "/dashboard/questions" },
     { label: "Estudiantes", value: stats.students, href: "/dashboard/students" },
-    { label: "Asignaciones", value: stats.assignments, href: "/dashboard/grades" },
     { label: "Pendientes", value: stats.pending, href: "/dashboard/grades", alert: stats.pending > 0 },
   ]
 
@@ -76,6 +93,12 @@ export default function DashboardPage() {
       description: "Crear, editar y gestionar evaluaciones",
       href: "/dashboard/exams",
       icon: FileText,
+    },
+    {
+      title: "Banco de Preguntas",
+      description: "Crear y gestionar preguntas reutilizables",
+      href: "/dashboard/questions",
+      icon: HelpCircle,
     },
     {
       title: "Estudiantes",

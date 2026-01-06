@@ -44,12 +44,19 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
   Users,
   Search,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
   Mail,
   GraduationCap,
   ArrowUpDown,
@@ -66,6 +73,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Check,
 } from "lucide-react"
 
 type SortField = "name" | "email" | "career" | "year" | "group"
@@ -154,6 +162,7 @@ export default function StudentsPage() {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editingValue, setEditingValue] = useState<string>("")
+  const [editingGroupIds, setEditingGroupIds] = useState<string[]>([])
   const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   // Header actions callbacks
@@ -607,64 +616,70 @@ export default function StudentsPage() {
   }
 
   // Inline editing handlers
-  const startEditing = (studentId: string, field: string, currentValue: string) => {
+  const startEditing = (studentId: string, field: string, currentValue: string, groupIds?: string[]) => {
     setEditingStudentId(studentId)
     setEditingField(field)
     setEditingValue(currentValue)
+    if (groupIds) {
+      setEditingGroupIds(groupIds)
+    }
   }
 
   const cancelEditing = () => {
     setEditingStudentId(null)
     setEditingField(null)
     setEditingValue("")
+    setEditingGroupIds([])
   }
 
-  const saveEdit = async (studentId: string) => {
+  const saveEdit = async (studentId: string, overrideValue?: string) => {
     if (!editingField) return
 
     const student = students.find((s) => s.id === studentId)
     if (!student) return
 
+    // Use override value if provided (for Select components), otherwise use editingValue
+    const valueToSave = overrideValue !== undefined ? overrideValue : editingValue
+
     // Validación: campos obligatorios no pueden estar vacíos
-    if (editingField === "fullName" && !editingValue.trim()) {
+    if (editingField === "fullName" && !valueToSave.trim()) {
       cancelEditing()
       return
     }
-    if (editingField === "email" && !editingValue.trim()) {
+    if (editingField === "email" && !valueToSave.trim()) {
       cancelEditing()
       return
     }
-    if (editingField === "career" && !editingValue) {
+    if (editingField === "career" && !valueToSave) {
       // La carrera es obligatoria, no se puede dejar vacía
       cancelEditing()
       return
     }
 
-    // Check if value actually changed
-    let currentValue: string
-    switch (editingField) {
-      case "fullName":
-        currentValue = student.fullName
-        break
-      case "email":
-        currentValue = student.email
-        break
-      case "career":
-        currentValue = student.career
-        break
-      case "year":
-        currentValue = student.year
-        break
-      case "group":
-        currentValue = student.groups[0]?.id || ""
-        break
-      default:
-        currentValue = ""
-    }
+    // Check if value actually changed (skip for groups, handled separately)
+    if (editingField !== "group") {
+      let currentValue: string
+      switch (editingField) {
+        case "fullName":
+          currentValue = student.fullName
+          break
+        case "email":
+          currentValue = student.email
+          break
+        case "career":
+          currentValue = student.career
+          break
+        case "year":
+          currentValue = student.year
+          break
+        default:
+          currentValue = ""
+      }
 
-    if (editingValue === currentValue) {
-      cancelEditing()
-      return
+      if (valueToSave === currentValue) {
+        cancelEditing()
+        return
+      }
     }
 
     setIsSavingEdit(true)
@@ -673,23 +688,13 @@ export default function StudentsPage() {
       // Build update payload
       const updatePayload: Record<string, unknown> = {}
 
-      switch (editingField) {
-        case "fullName":
-          updatePayload.fullName = editingValue.trim()
-          break
-        case "email":
-          updatePayload.email = editingValue.trim()
-          break
-        case "career":
-          updatePayload.career = editingValue
-          break
-        case "year":
-          updatePayload.year = editingValue
-          break
-        case "group":
-          updatePayload.groupIds = editingValue ? [editingValue] : []
-          break
-      }
+      // Build full student payload for PUT
+      updatePayload.fullName = editingField === "fullName" ? valueToSave.trim() : student.fullName
+      updatePayload.email = editingField === "email" ? valueToSave.trim() : student.email
+      updatePayload.career = editingField === "career" ? valueToSave : student.career
+      updatePayload.year = editingField === "year" ? valueToSave : student.year
+      // Keep existing groups for non-group edits
+      updatePayload.groupIds = student.groups.map((g) => g.id)
 
       if (USE_MOCK_DATA) {
         // Update locally for mock data
@@ -697,18 +702,10 @@ export default function StudentsPage() {
           prev.map((s) => {
             if (s.id !== studentId) return s
             const updated = { ...s }
-            if (editingField === "fullName") updated.fullName = editingValue.trim()
-            if (editingField === "email") updated.email = editingValue.trim()
-            if (editingField === "career") updated.career = editingValue
-            if (editingField === "year") updated.year = editingValue
-            if (editingField === "group") {
-              if (editingValue) {
-                const g = groups.find((gr) => gr.id === editingValue)
-                updated.groups = [{ id: editingValue, name: g?.name || "" }]
-              } else {
-                updated.groups = []
-              }
-            }
+            if (editingField === "fullName") updated.fullName = valueToSave.trim()
+            if (editingField === "email") updated.email = valueToSave.trim()
+            if (editingField === "career") updated.career = valueToSave
+            if (editingField === "year") updated.year = valueToSave
             return updated
           })
         )
@@ -729,6 +726,72 @@ export default function StudentsPage() {
     } finally {
       setIsSavingEdit(false)
     }
+  }
+
+  // Save groups edit (multiselect)
+  const saveGroupsEdit = async (studentId: string) => {
+    const student = students.find((s) => s.id === studentId)
+    if (!student) return
+
+    // Check if groups actually changed
+    const currentGroupIds = student.groups.map((g) => g.id).sort()
+    const newGroupIds = [...editingGroupIds].sort()
+    if (JSON.stringify(currentGroupIds) === JSON.stringify(newGroupIds)) {
+      cancelEditing()
+      return
+    }
+
+    setIsSavingEdit(true)
+
+    try {
+      // Build full student payload for PUT
+      const updatePayload = {
+        fullName: student.fullName,
+        email: student.email,
+        career: student.career,
+        year: student.year,
+        groupIds: editingGroupIds,
+      }
+
+      if (USE_MOCK_DATA) {
+        // Update locally for mock data
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.id !== studentId) return s
+            return {
+              ...s,
+              groups: editingGroupIds.map((gid) => {
+                const g = groups.find((gr) => gr.id === gid)
+                return { id: gid, name: g?.name || "" }
+              }),
+            }
+          })
+        )
+      } else {
+        // Call API to update
+        const updatedStudent = await apiClient.put<Student>(
+          API_CONFIG.ENDPOINTS.STUDENT_BY_ID(studentId),
+          updatePayload
+        )
+        setStudents((prev) =>
+          prev.map((s) => (s.id === studentId ? updatedStudent : s))
+        )
+      }
+
+      cancelEditing()
+    } catch (error) {
+      console.error("Error updating student groups:", error)
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  const toggleGroupSelection = (groupId: string) => {
+    setEditingGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    )
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, studentId: string) => {
@@ -985,44 +1048,66 @@ export default function StudentsPage() {
                       )}
                     </div>
 
-                    {/* Grupo */}
-                    <div
-                      className="col-span-2 flex flex-wrap gap-1 cursor-pointer"
-                      onDoubleClick={() => startEditing(student.id, "group", student.groups[0]?.id || "")}
-                    >
+                    {/* Grupo (multiselect) */}
+                    <div className="col-span-2 flex flex-wrap gap-1">
                       {isEditing && editingField === "group" ? (
-                        <Select
-                          value={editingValue || "none"}
-                          onValueChange={(v) => {
-                            setEditingValue(v === "none" ? "" : v)
-                            // Auto-save on select change
-                            setTimeout(() => {
-                              const newValue = v === "none" ? "" : v
-                              setEditingValue(newValue)
-                              saveEdit(student.id)
-                            }, 0)
+                        <Popover
+                          open={true}
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              saveGroupsEdit(student.id)
+                            }
                           }}
                         >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Grupo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Sin grupo</SelectItem>
-                            {groups.map((g) => (
-                              <SelectItem key={g.id} value={g.id}>
-                                {g.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : student.groups.length > 0 ? (
-                        student.groups.map((g) => (
-                          <Badge key={g.id} variant="secondary" className="bg-blue-50 text-blue-700 text-xs font-normal">
-                            {g.name}
-                          </Badge>
-                        ))
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs justify-between w-full"
+                            >
+                              <span className="truncate">
+                                {editingGroupIds.length === 0
+                                  ? "Sin grupos"
+                                  : `${editingGroupIds.length} grupo${editingGroupIds.length > 1 ? "s" : ""}`}
+                              </span>
+                              <ChevronDown className="h-3 w-3 ml-1 shrink-0" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-2" align="start">
+                            <div className="space-y-1">
+                              {groups.map((g) => (
+                                <label
+                                  key={g.id}
+                                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer text-sm"
+                                >
+                                  <Checkbox
+                                    checked={editingGroupIds.includes(g.id)}
+                                    onCheckedChange={() => toggleGroupSelection(g.id)}
+                                  />
+                                  <span>{g.name}</span>
+                                </label>
+                              ))}
+                              {groups.length === 0 && (
+                                <p className="text-xs text-gray-500 px-2 py-1">No hay grupos</p>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       ) : (
-                        <span className="text-gray-400 text-xs">—</span>
+                        <div
+                          className="flex flex-wrap gap-1 cursor-pointer min-h-[28px] items-center"
+                          onDoubleClick={() => startEditing(student.id, "group", "", student.groups.map((g) => g.id))}
+                        >
+                          {student.groups.length > 0 ? (
+                            student.groups.map((g) => (
+                              <Badge key={g.id} variant="secondary" className="bg-blue-50 text-blue-700 text-xs font-normal">
+                                {g.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -1036,8 +1121,8 @@ export default function StudentsPage() {
                           value={editingValue}
                           onValueChange={(v) => {
                             setEditingValue(v)
-                            // Auto-save on select change
-                            setTimeout(() => saveEdit(student.id), 0)
+                            // Pass the value directly to saveEdit to avoid state timing issues
+                            saveEdit(student.id, v)
                           }}
                         >
                           <SelectTrigger className="h-7 text-xs">
@@ -1214,23 +1299,50 @@ export default function StudentsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="group">Grupo</Label>
-              <Select
-                value={newStudentForm.groupIds[0] || "none"}
-                onValueChange={(v) => setNewStudentForm((prev) => ({ ...prev, groupIds: v === "none" ? [] : [v] }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin grupo</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Grupos</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {newStudentForm.groupIds.length === 0
+                        ? "Seleccionar grupos"
+                        : newStudentForm.groupIds.length === 1
+                        ? groups.find((g) => g.id === newStudentForm.groupIds[0])?.name || "1 grupo"
+                        : `${newStudentForm.groupIds.length} grupos`}
+                    </span>
+                    <ChevronDown className="h-4 w-4 ml-2 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-2" align="start">
+                  <div className="space-y-1">
+                    {groups.map((g) => (
+                      <label
+                        key={g.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer text-sm"
+                      >
+                        <Checkbox
+                          checked={newStudentForm.groupIds.includes(g.id)}
+                          onCheckedChange={(checked) => {
+                            setNewStudentForm((prev) => ({
+                              ...prev,
+                              groupIds: checked
+                                ? [...prev.groupIds, g.id]
+                                : prev.groupIds.filter((id) => id !== g.id),
+                            }))
+                          }}
+                        />
+                        <span>{g.name}</span>
+                      </label>
+                    ))}
+                    {groups.length === 0 && (
+                      <p className="text-xs text-gray-500 px-2 py-1">No hay grupos disponibles</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="year">Año de ingreso</Label>
@@ -1527,15 +1639,25 @@ Juan,juan@mail.com,Ing,1`}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="group_career">Carrera</Label>
-                <Input
-                  id="group_career"
-                  value={groupForm.career}
-                  onChange={(e) =>
-                    setGroupForm((prev) => ({ ...prev, career: e.target.value }))
+                <Label>Carrera</Label>
+                <Select
+                  value={groupForm.career || "none"}
+                  onValueChange={(v) =>
+                    setGroupForm((prev) => ({ ...prev, career: v === "none" ? "" : v }))
                   }
-                  placeholder="Ingeniería"
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar carrera" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin carrera</SelectItem>
+                    {careers.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="group_year">Año</Label>

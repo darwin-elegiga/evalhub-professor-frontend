@@ -47,6 +47,7 @@ export type {
   FinalGrade,
   StudentAnswer,
   Grade,
+  GradeWithDetails,
 } from "./grade"
 
 // Exam Events (Monitoring)

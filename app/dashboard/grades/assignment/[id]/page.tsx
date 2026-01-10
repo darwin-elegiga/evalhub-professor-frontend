@@ -11,8 +11,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import type { ExamEvent, StudentAnswer, Grade } from "@/lib/types"
-import type { GradingAssignment, GradingQuestion, GradingDataResponse } from "@/lib/api-types"
+import type { ExamEvent, Grade } from "@/lib/types"
+import type { GradingDataResponse, GradingQuestion, GradingAssignment } from "@/lib/api-types"
 
 export default function GradingPage() {
   const { user, loading } = useAuth()
@@ -20,11 +20,7 @@ export default function GradingPage() {
   const params = useParams()
   const assignmentId = params.id as string
 
-  const [assignment, setAssignment] = useState<GradingAssignment | null>(null)
-  const [questions, setQuestions] = useState<GradingQuestion[]>([])
-  const [studentAnswers, setStudentAnswers] = useState<StudentAnswer[]>([])
-  const [existingGrade, setExistingGrade] = useState<Grade | null>(null)
-  const [examEvents, setExamEvents] = useState<ExamEvent[]>([])
+  const [gradingData, setGradingData] = useState<GradingDataResponse | null>(null)
   const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
@@ -53,58 +49,82 @@ export default function GradingPage() {
             (e) => e.id === foundAssignment.exam_id
           )
 
-          setAssignment({
+          const assignment: GradingAssignment = {
             id: foundAssignment.id,
-            status: foundAssignment.status,
+            status: foundAssignment.status as "pending" | "in_progress" | "submitted" | "graded",
+            startedAt: foundAssignment.started_at,
+            submittedAt: foundAssignment.submitted_at,
             student: {
-              full_name: student?.full_name || "Estudiante",
+              id: student?.id || "",
+              fullName: student?.fullName || "Estudiante",
               email: student?.email || "",
+              career: student?.career,
             },
             exam: {
               id: exam?.id || "",
               title: exam?.title || "Examen",
-              description: exam?.description || "",
+              description: exam?.description || null,
             },
-          })
+          }
 
-          // Get questions with options
-          const examQuestions: GradingQuestion[] = MOCK_DATA.questions
+          // Get questions with answers
+          const questions: GradingQuestion[] = MOCK_DATA.questions
             .filter((q) => q.exam_id === foundAssignment.exam_id)
-            .map((q) => ({
-              ...q,
-              answer_options: MOCK_DATA.answerOptions.filter(
-                (opt) => opt.question_id === q.id
-              ),
-            }))
-          setQuestions(examQuestions)
-
-          // Get student answers
-          const answers = MOCK_DATA.studentAnswers.filter(
-            (a) => a.assignment_id === assignmentId
-          )
-          setStudentAnswers(answers)
+            .map((q) => {
+              const studentAnswer = MOCK_DATA.studentAnswers.find(
+                (a) => a.assignment_id === assignmentId && a.question_id === q.id
+              )
+              return {
+                id: q.id,
+                title: q.title || `Pregunta ${q.id}`,
+                content: q.question_text,
+                questionType: q.question_type,
+                typeConfig: {},
+                weight: q.points || 1,
+                answer: studentAnswer ? {
+                  id: studentAnswer.id,
+                  selectedOptionId: studentAnswer.selected_option_id,
+                  answerText: studentAnswer.answer_text,
+                  answerNumeric: null,
+                  score: studentAnswer.score,
+                  feedback: studentAnswer.feedback,
+                } : null,
+              }
+            })
 
           // Get existing grade
           const grade = MOCK_DATA.grades.find(
             (g) => g.assignment_id === assignmentId
           )
-          setExistingGrade(grade || null)
+          const existingGrade: Grade | null = grade ? {
+            id: grade.id,
+            assignmentId: grade.assignment_id,
+            averageScore: grade.average_score,
+            finalGrade: grade.final_grade,
+            roundingMethod: grade.rounding_method,
+            gradedAt: grade.graded_at,
+            gradedBy: grade.graded_by,
+          } : null
 
-          // Get exam events for this assignment
-          const events = MOCK_DATA.examEvents.filter(
+          // Get exam events
+          const examEvents = MOCK_DATA.examEvents?.filter(
             (e) => e.assignment_id === assignmentId
-          )
-          setExamEvents(events)
+          ) || []
+
+          setGradingData({
+            assignment,
+            student: assignment.student,
+            exam: assignment.exam,
+            questions,
+            existingGrade,
+            examEvents,
+          })
         }
       } else {
         const data = await apiClient.get<GradingDataResponse>(
-          `${API_CONFIG.ENDPOINTS.ASSIGNMENTS}/${assignmentId}/grading`
+          API_CONFIG.ENDPOINTS.ASSIGNMENT_GRADING(assignmentId)
         )
-        setAssignment(data.assignment)
-        setQuestions(data.questions)
-        setStudentAnswers(data.studentAnswers)
-        setExistingGrade(data.existingGrade)
-        setExamEvents(data.examEvents || [])
+        setGradingData(data)
       }
     } catch (error) {
       console.error("Error loading grading data:", error)
@@ -116,7 +136,10 @@ export default function GradingPage() {
   if (loading || loadingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        Cargando...
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Cargando datos...</p>
+        </div>
       </div>
     )
   }
@@ -125,7 +148,7 @@ export default function GradingPage() {
     return null
   }
 
-  if (!assignment) {
+  if (!gradingData) {
     return (
       <div className="min-h-screen bg-gray-100">
         <div className="container mx-auto p-6">
@@ -149,12 +172,11 @@ export default function GradingPage() {
     <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto p-6">
         <GradingInterface
-          assignment={assignment}
-          questions={questions}
-          studentAnswers={studentAnswers}
-          existingGrade={existingGrade}
+          assignment={gradingData.assignment}
+          questions={gradingData.questions}
+          existingGrade={gradingData.existingGrade}
           teacherId={user.id}
-          examEvents={examEvents}
+          examEvents={gradingData.examEvents}
         />
       </div>
     </div>

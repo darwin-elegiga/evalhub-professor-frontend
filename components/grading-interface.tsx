@@ -37,10 +37,13 @@ import {
   AlertTriangle,
   Info,
   AlertCircle,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LatexPreview } from "@/components/latex-preview"
+import { toast } from "sonner"
+import { apiClient } from "@/lib/api-client"
+import { API_CONFIG } from "@/lib/api-config"
 import type {
   ExamEvent,
   ExamEventType,
@@ -48,7 +51,6 @@ import type {
   GradeRoundingMethod,
   FinalGrade,
   Grade,
-  StudentAnswer,
 } from "@/lib/types"
 import type { GradingAssignment, GradingQuestion } from "@/lib/api-types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -56,7 +58,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 interface GradingInterfaceProps {
   assignment: GradingAssignment
   questions: GradingQuestion[]
-  studentAnswers: StudentAnswer[]
   existingGrade: Grade | null
   teacherId: string
   examEvents?: ExamEvent[]
@@ -76,6 +77,14 @@ const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string; bgC
   3: { label: "Aprobado", color: "text-yellow-700", bgColor: "bg-yellow-100" },
   4: { label: "Bueno", color: "text-blue-700", bgColor: "bg-blue-100" },
   5: { label: "Excelente", color: "text-green-700", bgColor: "bg-green-100" },
+}
+
+// Question type labels
+const QUESTION_TYPE_LABELS: Record<string, string> = {
+  multiple_choice: "Opción Múltiple",
+  numeric: "Numérica",
+  graph_click: "Click en Gráfico",
+  open_text: "Respuesta Abierta",
 }
 
 // Event type configuration
@@ -117,33 +126,31 @@ const SEVERITY_CONFIG: Record<
 export function GradingInterface({
   assignment,
   questions,
-  studentAnswers,
   existingGrade,
   teacherId,
   examEvents = [],
 }: GradingInterfaceProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [savingAnswerId, setSavingAnswerId] = useState<string | null>(null)
   const [eventsOpen, setEventsOpen] = useState(false)
   const [roundingMethod, setRoundingMethod] = useState<GradeRoundingMethod>(
-    existingGrade?.rounding_method || "floor"
+    existingGrade?.roundingMethod || "floor"
   )
+
+  // Initialize scores from questions with embedded answers
   const [scores, setScores] = useState<Record<string, { score: 2 | 3 | 4 | 5; feedback: string }>>(
-    studentAnswers.reduce(
-      (acc, answer) => ({
+    questions.reduce(
+      (acc, question) => ({
         ...acc,
-        [answer.question_id]: {
-          score: answer.score || 3,
-          feedback: answer.feedback || "",
+        [question.id]: {
+          score: (question.answer?.score as 2 | 3 | 4 | 5) || 3,
+          feedback: question.answer?.feedback || "",
         },
       }),
       {},
     ),
   )
-
-  const getStudentAnswer = (questionId: string) => {
-    return studentAnswers.find((a) => a.question_id === questionId)
-  }
 
   const updateScore = (questionId: string, field: "score" | "feedback", value: number | string) => {
     setScores((prev) => ({
@@ -155,17 +162,34 @@ export function GradingInterface({
     }))
   }
 
-  // Calculate average score (2-5 scale)
+  // Calculate weighted average score (2-5 scale)
   const calculateAverageScore = (): number => {
-    const scoreValues = Object.values(scores).map((s) => s.score)
-    if (scoreValues.length === 0) return 2
-    return scoreValues.reduce((sum, score) => sum + score, 0) / scoreValues.length
+    const totalWeight = questions.reduce((sum, q) => sum + q.weight, 0)
+    if (totalWeight === 0) return 2
+
+    const weightedSum = questions.reduce((sum, q) => {
+      const score = scores[q.id]?.score || 2
+      return sum + score * q.weight
+    }, 0)
+
+    return weightedSum / totalWeight
   }
 
   // Calculate final grade (2-5 scale) based on average and rounding method
   const calculateFinalGrade = (average: number): FinalGrade => {
-    // Apply rounding method: floor rounds down, ceil rounds up
-    const rounded = roundingMethod === "ceil" ? Math.ceil(average) : Math.floor(average)
+    let rounded: number
+    switch (roundingMethod) {
+      case "ceil":
+        rounded = Math.ceil(average)
+        break
+      case "round":
+        rounded = Math.round(average)
+        break
+      case "floor":
+      default:
+        rounded = Math.floor(average)
+        break
+    }
 
     // Clamp to 2-5 range
     if (rounded <= 2) return 2
@@ -177,47 +201,176 @@ export function GradingInterface({
   const finalGrade = calculateFinalGrade(averageScore)
   const finalGradeInfo = FINAL_GRADE_LABELS[finalGrade]
 
+  // Save individual answer grade
+  const saveAnswerGrade = async (questionId: string) => {
+    const question = questions.find((q) => q.id === questionId)
+    if (!question?.answer) return
+
+    setSavingAnswerId(question.answer.id)
+
+    try {
+      await apiClient.put(
+        API_CONFIG.ENDPOINTS.GRADE_ANSWER(question.answer.id),
+        {
+          score: scores[questionId].score,
+          feedback: scores[questionId].feedback || null,
+        }
+      )
+      toast.success("Calificación guardada")
+    } catch (error) {
+      console.error("Error saving answer grade:", error)
+      toast.error("Error al guardar la calificación")
+    } finally {
+      setSavingAnswerId(null)
+    }
+  }
+
+  // Submit final grade
   const handleSubmitGrade = async () => {
     setIsLoading(true)
 
     try {
-      // Update student answers with scores and feedback
-      for (const questionId of Object.keys(scores)) {
-        const answer = getStudentAnswer(questionId)
-        if (answer) {
-          await fetch(`/api/grades/answer/${answer.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              score: scores[questionId].score,
-              feedback: scores[questionId].feedback,
-            }),
-          })
+      // First, save all individual answer grades
+      for (const question of questions) {
+        if (question.answer) {
+          await apiClient.put(
+            API_CONFIG.ENDPOINTS.GRADE_ANSWER(question.answer.id),
+            {
+              score: scores[question.id].score,
+              feedback: scores[question.id].feedback || null,
+            }
+          )
         }
       }
 
-      // Create or update grade
-      const response = await fetch("/api/grades/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assignment_id: assignment.id,
-          average_score: averageScore,
-          final_grade: finalGrade,
-          rounding_method: roundingMethod,
-          graded_by: teacherId,
-        }),
+      // Then submit the final grade
+      await apiClient.post(API_CONFIG.ENDPOINTS.GRADES_SUBMIT, {
+        assignmentId: assignment.id,
+        averageScore: averageScore,
+        finalGrade: finalGrade,
+        roundingMethod: roundingMethod,
       })
 
-      if (!response.ok) throw new Error("Error submitting grade")
-
+      toast.success("Calificación final enviada")
       router.push("/dashboard/grades")
       router.refresh()
     } catch (error) {
-      console.error("[v0] Error submitting grade:", error)
-      alert("Error al guardar la calificación")
+      console.error("Error submitting grade:", error)
+      toast.error("Error al enviar la calificación")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Render answer based on question type
+  const renderAnswer = (question: GradingQuestion) => {
+    const answer = question.answer
+    if (!answer) {
+      return (
+        <div className="rounded-md border border-dashed bg-gray-50 p-4 text-center text-gray-500">
+          Sin respuesta
+        </div>
+      )
+    }
+
+    const typeConfig = question.typeConfig as Record<string, unknown>
+
+    switch (question.questionType) {
+      case "multiple_choice": {
+        const options = (typeConfig.options || []) as Array<{
+          id: string
+          text: string
+          isCorrect?: boolean
+        }>
+        const selectedId = answer.selectedOptionId
+
+        return (
+          <div className="space-y-2">
+            {options.map((option, idx) => {
+              const isSelected = option.id === selectedId
+              const isCorrect = option.isCorrect
+
+              return (
+                <div
+                  key={option.id}
+                  className={`rounded-md border p-3 ${
+                    isSelected && isCorrect
+                      ? "border-green-500 bg-green-50"
+                      : isSelected
+                        ? "border-red-500 bg-red-50"
+                        : isCorrect
+                          ? "border-green-300 bg-green-50/50"
+                          : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium text-gray-600">
+                      {String.fromCharCode(65 + idx)}.
+                    </span>
+                    <span className="flex-1">{option.text}</span>
+                    {isSelected && (
+                      <Badge variant="secondary" className="shrink-0">
+                        Seleccionada
+                      </Badge>
+                    )}
+                    {isCorrect && (
+                      <Badge className="shrink-0 bg-green-600">
+                        Correcta
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
+      }
+
+      case "numeric": {
+        const correctAnswer = typeConfig.correctAnswer as number | undefined
+        const tolerance = typeConfig.tolerance as number | undefined
+        const studentAnswer = answer.answerNumeric
+
+        const isCorrect = correctAnswer !== undefined && studentAnswer !== undefined
+          ? Math.abs(studentAnswer - correctAnswer) <= (tolerance || 0)
+          : false
+
+        return (
+          <div className="space-y-3">
+            <div className={`rounded-md border p-4 ${isCorrect ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
+              <div className="text-sm text-gray-500 mb-1">Respuesta del estudiante:</div>
+              <div className="text-lg font-mono font-semibold">
+                {studentAnswer !== null ? studentAnswer : "Sin respuesta"}
+              </div>
+            </div>
+            {correctAnswer !== undefined && (
+              <div className="text-sm text-gray-600">
+                Respuesta correcta: <span className="font-semibold">{correctAnswer}</span>
+                {tolerance !== undefined && tolerance > 0 && (
+                  <span className="text-gray-400"> (tolerancia: ±{tolerance})</span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      case "open_text":
+        return (
+          <div className="rounded-md border bg-gray-50 p-4">
+            <div className="text-sm text-gray-500 mb-2">Respuesta del estudiante:</div>
+            <div className="whitespace-pre-wrap text-gray-800">
+              {answer.answerText || "Sin respuesta"}
+            </div>
+          </div>
+        )
+
+      default:
+        return (
+          <div className="rounded-md border bg-gray-50 p-4 text-gray-600">
+            Tipo de pregunta no soportado para visualización
+          </div>
+        )
     }
   }
 
@@ -234,14 +387,18 @@ export function GradingInterface({
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{assignment.exam.title}</h1>
-            <p className="text-muted-foreground">Estudiante: {assignment.student.full_name}</p>
+            <p className="text-muted-foreground">Estudiante: {assignment.student.fullName}</p>
           </div>
-          <Badge variant={assignment.status === "graded" ? "default" : "secondary"} className="bg-blue-500">
+          <Badge
+            variant={assignment.status === "graded" ? "default" : "secondary"}
+            className={assignment.status === "graded" ? "bg-green-600" : "bg-amber-500"}
+          >
             {assignment.status === "graded" ? "Calificado" : "Por Calificar"}
           </Badge>
         </div>
       </div>
 
+      {/* Grade Summary Card */}
       <Card>
         <CardHeader>
           <CardTitle>Resumen de Calificación</CardTitle>
@@ -249,7 +406,7 @@ export function GradingInterface({
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <div className="text-sm text-muted-foreground">Promedio de Preguntas</div>
+              <div className="text-sm text-muted-foreground">Promedio Ponderado</div>
               <div className="text-2xl font-bold">{averageScore.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground">Escala 2-5</div>
             </div>
@@ -284,18 +441,24 @@ export function GradingInterface({
             <RadioGroup
               value={roundingMethod}
               onValueChange={(value) => setRoundingMethod(value as GradeRoundingMethod)}
-              className="flex gap-4"
+              className="flex flex-wrap gap-4"
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="floor" id="floor" />
                 <Label htmlFor="floor" className="cursor-pointer">
-                  Por defecto (redondea hacia abajo)
+                  Por defecto (hacia abajo)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="round" id="round" />
+                <Label htmlFor="round" className="cursor-pointer">
+                  Redondeo estándar
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="ceil" id="ceil" />
                 <Label htmlFor="ceil" className="cursor-pointer">
-                  Por exceso (redondea hacia arriba)
+                  Por exceso (hacia arriba)
                 </Label>
               </div>
             </RadioGroup>
@@ -357,53 +520,32 @@ export function GradingInterface({
                     .map((event) => {
                       const config = EVENT_CONFIG[event.event_type]
                       const severityConfig = SEVERITY_CONFIG[event.severity]
-                      const EventIcon = config.icon
-                      const SeverityIcon = severityConfig.icon
+                      const EventIcon = config?.icon || Info
+                      const SeverityIcon = severityConfig?.icon || Info
 
                       return (
                         <div
                           key={event.id}
-                          className={`flex items-start gap-3 rounded-lg border p-3 ${severityConfig.bgColor}`}
+                          className={`flex items-start gap-3 rounded-lg border p-3 ${severityConfig?.bgColor || "bg-gray-50"}`}
                         >
                           {/* Event Icon */}
-                          <div className={`mt-0.5 ${severityConfig.color}`}>
+                          <div className={`mt-0.5 ${severityConfig?.color || "text-gray-600"}`}>
                             <EventIcon className="h-4 w-4" />
                           </div>
 
                           {/* Event Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className={`font-medium text-sm ${severityConfig.color}`}>
-                                {config.label}
+                              <span className={`font-medium text-sm ${severityConfig?.color || "text-gray-600"}`}>
+                                {config?.label || event.event_type}
                               </span>
                               {event.severity !== "info" && (
-                                <SeverityIcon className={`h-3.5 w-3.5 ${severityConfig.color}`} />
+                                <SeverityIcon className={`h-3.5 w-3.5 ${severityConfig?.color || ""}`} />
                               )}
                             </div>
                             <p className="text-sm text-gray-600 mt-0.5">
-                              {event.details.message || config.description}
+                              {event.details?.message || config?.description || ""}
                             </p>
-                            {/* Additional details */}
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500">
-                              {event.details.duration_seconds !== undefined && (
-                                <span>Duración: {event.details.duration_seconds}s</span>
-                              )}
-                              {event.details.pasted_length !== undefined && (
-                                <span>Caracteres pegados: {event.details.pasted_length}</span>
-                              )}
-                              {event.details.shortcut_keys && (
-                                <span>Teclas: {event.details.shortcut_keys}</span>
-                              )}
-                              {event.details.idle_duration_seconds !== undefined && (
-                                <span>Inactivo: {event.details.idle_duration_seconds}s</span>
-                              )}
-                              {event.details.answer_time_seconds !== undefined && (
-                                <span>Tiempo respuesta: {event.details.answer_time_seconds}s</span>
-                              )}
-                              {event.details.question_index !== undefined && (
-                                <span>Pregunta: {event.details.question_index + 1}</span>
-                              )}
-                            </div>
                           </div>
 
                           {/* Timestamp */}
@@ -424,84 +566,41 @@ export function GradingInterface({
         </Card>
       )}
 
+      {/* Questions */}
       <div className="space-y-4">
         {questions.map((question, index) => {
-          const studentAnswer = getStudentAnswer(question.id)
-          const correctOption = question.answer_options.find((opt) => opt.is_correct)
-          const selectedOption = studentAnswer?.selected_option_id
-            ? question.answer_options.find((opt) => opt.id === studentAnswer.selected_option_id)
-            : null
-          const isCorrect = selectedOption?.is_correct || false
+          const isSaving = savingAnswerId === question.answer?.id
 
           return (
             <Card key={question.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">
-                    Pregunta {index + 1} ({question.points} pts)
-                  </CardTitle>
-                  {studentAnswer && (
-                    <Badge variant={isCorrect ? "default" : "destructive"} className="gap-1">
-                      {isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                      {isCorrect ? "Correcta" : "Incorrecta"}
-                    </Badge>
-                  )}
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">
+                      Pregunta {index + 1}: {question.title}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {QUESTION_TYPE_LABELS[question.questionType] || question.questionType}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Peso: {question.weight}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-                <CardDescription>{question.question_text}</CardDescription>
+                <CardDescription>
+                  <span dangerouslySetInnerHTML={{ __html: question.content }} />
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {question.question_latex && (
-                  <div className="rounded-md border bg-white p-4">
-                    <LatexPreview latex={question.question_latex} />
-                  </div>
-                )}
+                {/* Student Answer */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">Respuesta del Estudiante</Label>
+                  {renderAnswer(question)}
+                </div>
 
-                {question.answer_options.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Opciones:</Label>
-                    {question.answer_options.map((option, optIndex) => {
-                      const isSelected = option.id === studentAnswer?.selected_option_id
-                      const isCorrectAnswer = option.is_correct
-
-                      return (
-                        <div
-                          key={option.id}
-                          className={`rounded-md border p-3 ${
-                            isSelected && isCorrectAnswer
-                              ? "border-green-500 bg-green-50"
-                              : isSelected
-                                ? "border-red-500 bg-red-50"
-                                : isCorrectAnswer
-                                  ? "border-green-300 bg-green-50"
-                                  : ""
-                          }`}
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className="font-medium">{String.fromCharCode(65 + optIndex)}.</span>
-                            <div className="flex-1">
-                              {option.option_text}
-                              {option.option_latex && (
-                                <div className="mt-2 rounded-md bg-white p-2">
-                                  <LatexPreview latex={option.option_latex} />
-                                </div>
-                              )}
-                            </div>
-                            {isSelected && <Badge variant="secondary">Seleccionada</Badge>}
-                            {isCorrectAnswer && <Badge variant="default">Correcta</Badge>}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {studentAnswer?.answer_text && (
-                  <div>
-                    <Label className="text-sm font-medium">Respuesta del Estudiante:</Label>
-                    <div className="mt-2 rounded-md border bg-gray-50 p-3">{studentAnswer.answer_text}</div>
-                  </div>
-                )}
-
+                {/* Grading Section */}
                 <div className="grid gap-4 border-t pt-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Calificación (2-5)</Label>
@@ -516,10 +615,9 @@ export function GradingInterface({
                             onClick={() => updateScore(question.id, "score", value)}
                             className={`flex-1 py-2 px-3 rounded-md border-2 text-sm font-medium transition-all ${
                               isSelected
-                                ? `${scoreInfo.color} border-current bg-opacity-10`
+                                ? `${scoreInfo.color} border-current`
                                 : "border-gray-200 text-gray-500 hover:border-gray-300"
                             }`}
-                            style={isSelected ? { backgroundColor: `${scoreInfo.color.replace('text-', '')}10` } : {}}
                             title={scoreInfo.label}
                           >
                             {value}
@@ -536,25 +634,49 @@ export function GradingInterface({
                     <Textarea
                       id={`feedback-${question.id}`}
                       placeholder="Comentarios opcionales..."
-                      rows={1}
+                      rows={2}
                       value={scores[question.id]?.feedback || ""}
                       onChange={(e) => updateScore(question.id, "feedback", e.target.value)}
                     />
                   </div>
                 </div>
+
+                {/* Save individual answer button */}
+                {question.answer && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => saveAnswerGrade(question.id)}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      {isSaving ? "Guardando..." : "Guardar"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )
         })}
       </div>
 
+      {/* Submit Grade */}
       <div className="flex justify-end gap-4">
         <Button variant="outline" onClick={() => router.back()}>
           Cancelar
         </Button>
         <Button onClick={handleSubmitGrade} disabled={isLoading}>
-          <Save className="mr-2 h-4 w-4" />
-          {isLoading ? "Guardando..." : "Guardar Calificación"}
+          {isLoading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="mr-2 h-4 w-4" />
+          )}
+          {isLoading ? "Enviando..." : "Enviar Calificación Final"}
         </Button>
       </div>
     </div>

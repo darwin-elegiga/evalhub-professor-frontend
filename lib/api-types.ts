@@ -10,6 +10,7 @@ import type {
   StudentAnswer,
   Grade,
   ExamEvent,
+  QuestionType,
 } from "./types"
 
 // ============================================
@@ -20,8 +21,10 @@ import type {
  * Embedded student info in API responses
  */
 export interface EmbeddedStudent {
-  full_name: string
+  id: string
+  fullName: string
   email: string
+  career?: string | null
 }
 
 /**
@@ -30,14 +33,14 @@ export interface EmbeddedStudent {
 export interface EmbeddedExamBasic {
   id: string
   title: string
-  description: string | null
+  description?: string | null
 }
 
 /**
  * Embedded exam info with duration
  */
 export interface EmbeddedExam extends EmbeddedExamBasic {
-  duration_minutes: number | null
+  durationMinutes: number | null
 }
 
 // ============================================
@@ -48,7 +51,7 @@ export interface EmbeddedExam extends EmbeddedExamBasic {
  * Question with answer options for exam taking
  */
 export interface ExamQuestion extends Question {
-  answer_options: AnswerOption[]
+  answerOptions: AnswerOption[]
 }
 
 /**
@@ -78,24 +81,40 @@ export interface ExamTokenResponse {
 export interface GradingAssignment {
   id: string
   status: "pending" | "in_progress" | "submitted" | "graded"
+  startedAt?: string | null
+  submittedAt?: string | null
   student: EmbeddedStudent
   exam: EmbeddedExamBasic
 }
 
 /**
- * Question with options for grading
+ * Question with options and answer for grading
  */
-export interface GradingQuestion extends Question {
-  answer_options: AnswerOption[]
+export interface GradingQuestion {
+  id: string
+  title: string
+  content: string
+  questionType: QuestionType
+  typeConfig: Record<string, unknown>
+  weight: number
+  answer: {
+    id: string
+    selectedOptionId?: string | null
+    answerText?: string | null
+    answerNumeric?: number | null
+    score?: number | null
+    feedback?: string | null
+  } | null
 }
 
 /**
- * Response from GET /api/assignments/:id/grading
+ * Response from GET /assignments/:id/grading
  */
 export interface GradingDataResponse {
   assignment: GradingAssignment
+  student: EmbeddedStudent
+  exam: EmbeddedExamBasic
   questions: GradingQuestion[]
-  studentAnswers: StudentAnswer[]
   existingGrade: Grade | null
   examEvents?: ExamEvent[]
 }
@@ -108,14 +127,15 @@ export interface GradingDataResponse {
  * Response from POST /api/exams/assign
  */
 export interface ExamAssignmentResult {
-  student_id: string
-  student_name: string
-  magic_token: string
-  url: string
+  studentId: string
+  studentName: string
+  magicToken: string
+  magicLink: string
 }
 
 export interface ExamAssignResponse {
   assignments: ExamAssignmentResult[]
+  skippedCount: number
 }
 
 // ============================================

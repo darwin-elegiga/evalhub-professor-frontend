@@ -16,11 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Grade, StudentGroup, Exam, FinalGrade } from "@/lib/types"
+import type { GradeWithDetails, StudentGroup, FinalGrade, StudentExamAssignment } from "@/lib/types"
 import {
   GraduationCap,
   Users,
-  FileText,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -35,6 +34,7 @@ import {
   ArrowDown,
   X,
   ClipboardList,
+  Pencil,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -46,28 +46,28 @@ const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string; bg:
   5: { label: "Excelente", color: "text-green-600", bg: "bg-green-50" },
 }
 
+// Assignment with embedded info for display
 interface AssignmentWithDetails {
   id: string
-  status: string
-  assigned_at: string
-  submitted_at: string | null
+  status: "pending" | "in_progress" | "submitted" | "graded"
+  assignedAt: string
+  submittedAt: string | null
   student: {
     id: string
-    full_name: string
+    fullName: string
     email: string
     career?: string | null
-    group_id?: string | null
   }
   exam: {
     id: string
     title: string
   }
-  grade: Grade | null
+  grade?: GradeWithDetails | null
 }
 
 type SortField = "name" | "status" | "submitted" | "grade"
 type SortDirection = "asc" | "desc"
-type StatusFilter = "all" | "pending" | "in_progress" | "submitted" | "graded"
+type StatusFilter = "all" | "submitted" | "graded"
 
 const ITEMS_PER_PAGE_OPTIONS = [25, 50, 100]
 
@@ -75,20 +75,18 @@ export default function GradesPage() {
   const { user } = useAuth()
   const [assignments, setAssignments] = useState<AssignmentWithDetails[]>([])
   const [groups, setGroups] = useState<StudentGroup[]>([])
-  const [exams, setExams] = useState<Exam[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Cascade filters
   const [selectedCareer, setSelectedCareer] = useState<string>("")
   const [selectedGroup, setSelectedGroup] = useState<string>("")
-  const [selectedExam, setSelectedExam] = useState<string>("")
 
   // Additional filters
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
 
   // Sorting
-  const [sortField, setSortField] = useState<SortField>("name")
+  const [sortField, setSortField] = useState<SortField>("status")
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
 
   // Pagination
@@ -97,62 +95,58 @@ export default function GradesPage() {
 
   useEffect(() => {
     if (user) {
-      loadData()
+      loadGroups()
     }
   }, [user])
 
-  const loadData = async () => {
+  // Load assignments when group changes
+  useEffect(() => {
+    if (user && selectedGroup) {
+      loadAssignments()
+    } else {
+      setAssignments([])
+    }
+  }, [user, selectedGroup])
+
+  const loadGroups = async () => {
     try {
       if (USE_MOCK_DATA) {
-        // Load groups and exams for filters
         setGroups(MOCK_DATA.studentGroups)
-        setExams(MOCK_DATA.exams)
-
-        // Build assignments with full student details
-        const assignmentsWithDetails: AssignmentWithDetails[] =
-          MOCK_DATA.assignments.map((assignment) => {
-            const student = MOCK_DATA.students.find(
-              (s) => s.id === assignment.student_id
-            )
-            const exam = MOCK_DATA.exams.find(
-              (e) => e.id === assignment.exam_id
-            )
-            const grade = MOCK_DATA.grades.find(
-              (g) => g.assignment_id === assignment.id
-            )
-
-            return {
-              id: assignment.id,
-              status: assignment.status,
-              assigned_at: assignment.assigned_at,
-              submitted_at: assignment.submitted_at,
-              student: {
-                id: student?.id || "",
-                fullName: student?.fullName || "Estudiante",
-                email: student?.email || "",
-                career: student?.career,
-                group_id: student?.groups.map((g) => g.id),
-              },
-              exam: {
-                id: exam?.id || "",
-                title: exam?.title || "Examen",
-              },
-              grade: grade || null,
-            }
-          })
-        setAssignments(assignmentsWithDetails)
       } else {
-        const [assignmentsData, groupsData, examsData] = await Promise.all([
-          apiClient.get<AssignmentWithDetails[]>(API_CONFIG.ENDPOINTS.ASSIGNMENTS),
-          apiClient.get<StudentGroup[]>("/student-groups"),
-          apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS),
-        ])
-        setAssignments(assignmentsData)
+        const groupsData = await apiClient.get<StudentGroup[]>(API_CONFIG.ENDPOINTS.GROUPS)
         setGroups(groupsData)
-        setExams(examsData)
       }
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("Error loading groups:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const loadAssignments = async () => {
+    setIsLoading(true)
+    try {
+        // Fetch assignments for grading - need two separate calls since API only accepts single status
+        const [submittedData, gradedData] = await Promise.all([
+          apiClient.get<AssignmentWithDetails[]>(
+            `${API_CONFIG.ENDPOINTS.ASSIGNMENTS}?status=submitted`
+          ),
+          apiClient.get<AssignmentWithDetails[]>(
+            `${API_CONFIG.ENDPOINTS.ASSIGNMENTS}?status=graded`
+          ),
+        ])
+
+        // Combine and deduplicate by id
+        const allAssignments = [...submittedData, ...gradedData]
+        const uniqueAssignments = allAssignments.filter(
+          (assignment, index, self) =>
+            index === self.findIndex((a) => a.id === assignment.id)
+        )
+
+        setAssignments(uniqueAssignments)
+      }
+    catch (error) {
+      console.error("Error loading assignments:", error)
     } finally {
       setIsLoading(false)
     }
@@ -170,60 +164,46 @@ export default function GradesPage() {
     return groups.filter((g) => g.career === selectedCareer)
   }, [groups, selectedCareer])
 
-  // Filter exams by selected group (exams assigned to students in that group)
-  const filteredExams = useMemo(() => {
-    if (!selectedGroup) return []
-    const examIds = new Set(
-      assignments
-        .filter((a) => a.student.group_id === selectedGroup)
-        .map((a) => a.exam.id)
-    )
-    return exams.filter((e) => examIds.has(e.id))
-  }, [exams, assignments, selectedGroup])
-
   // Filter and sort assignments
   const filteredAndSortedAssignments = useMemo(() => {
-    // Only show assignments if all cascade filters are selected
-    if (!selectedCareer || !selectedGroup || !selectedExam) return []
+    let result = assignments
 
-    let result = assignments.filter((a) => {
-      // Must match group and exam
-      if (a.student.group_id !== selectedGroup) return false
-      if (a.exam.id !== selectedExam) return false
-
-      // Search filter
-      if (search) {
-        const searchLower = search.toLowerCase()
-        const matchesName = a.student.full_name.toLowerCase().includes(searchLower)
+    // Search filter
+    if (search) {
+      const searchLower = search.toLowerCase()
+      result = result.filter((a) => {
+        const matchesName = a.student.fullName.toLowerCase().includes(searchLower)
         const matchesEmail = a.student.email.toLowerCase().includes(searchLower)
-        if (!matchesName && !matchesEmail) return false
-      }
+        const matchesExam = a.exam.title.toLowerCase().includes(searchLower)
+        return matchesName || matchesEmail || matchesExam
+      })
+    }
 
-      // Status filter
-      if (statusFilter !== "all" && a.status !== statusFilter) return false
-
-      return true
-    })
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter((a) => a.status === statusFilter)
+    }
 
     // Sort
-    result.sort((a, b) => {
+    result = [...result].sort((a, b) => {
       let comparison = 0
 
       switch (sortField) {
         case "name":
-          comparison = a.student.full_name.localeCompare(b.student.full_name)
+          comparison = a.student.fullName.localeCompare(b.student.fullName)
           break
         case "status":
-          comparison = a.status.localeCompare(b.status)
+          // submitted before graded (pending review first)
+          comparison = a.status === "submitted" ? -1 : b.status === "submitted" ? 1 : 0
           break
         case "submitted":
-          const dateA = a.submitted_at ? new Date(a.submitted_at).getTime() : 0
-          const dateB = b.submitted_at ? new Date(b.submitted_at).getTime() : 0
+          const dateA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0
+          const dateB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0
           comparison = dateA - dateB
           break
         case "grade":
-          const gradeA = a.grade?.final_grade || 0
-          const gradeB = b.grade?.final_grade || 0
+          const gradeA = a.grade?.finalGrade || 0
+          const gradeB = b.grade?.finalGrade || 0
           comparison = gradeA - gradeB
           break
       }
@@ -232,26 +212,26 @@ export default function GradesPage() {
     })
 
     return result
-  }, [assignments, selectedCareer, selectedGroup, selectedExam, search, statusFilter, sortField, sortDirection])
+  }, [assignments, search, statusFilter, sortField, sortDirection])
 
   // Stats for current selection
   const stats = useMemo(() => {
-    if (!selectedExam) return null
-    const filtered = assignments.filter(
-      (a) => a.student.group_id === selectedGroup && a.exam.id === selectedExam
-    )
+    if (assignments.length === 0) return null
+
+    const submitted = assignments.filter((a) => a.status === "submitted").length
+    const graded = assignments.filter((a) => a.status === "graded").length
+    const gradedAssignments = assignments.filter((a) => a.grade)
+    const average = gradedAssignments.length > 0
+      ? gradedAssignments.reduce((sum, a) => sum + (a.grade?.finalGrade || 0), 0) / gradedAssignments.length
+      : null
+
     return {
-      total: filtered.length,
-      pending: filtered.filter((a) => a.status === "pending").length,
-      inProgress: filtered.filter((a) => a.status === "in_progress").length,
-      submitted: filtered.filter((a) => a.status === "submitted").length,
-      graded: filtered.filter((a) => a.status === "graded").length,
-      averageGrade: filtered.filter((a) => a.grade).length > 0
-        ? (filtered.reduce((sum, a) => sum + (a.grade?.final_grade || 0), 0) /
-           filtered.filter((a) => a.grade).length).toFixed(1)
-        : null,
+      total: assignments.length,
+      submitted,
+      graded,
+      average: average?.toFixed(2) || null,
     }
-  }, [assignments, selectedGroup, selectedExam])
+  }, [assignments])
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedAssignments.length / itemsPerPage)
@@ -263,17 +243,12 @@ export default function GradesPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [search, statusFilter, selectedExam, itemsPerPage])
+  }, [search, statusFilter, itemsPerPage])
 
   // Reset cascade when parent changes
   useEffect(() => {
     setSelectedGroup("")
-    setSelectedExam("")
   }, [selectedCareer])
-
-  useEffect(() => {
-    setSelectedExam("")
-  }, [selectedGroup])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -297,24 +272,10 @@ export default function GradesPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return (
-          <Badge variant="secondary" className="gap-1 bg-gray-100 text-gray-600">
-            <Clock className="h-3 w-3" />
-            Pendiente
-          </Badge>
-        )
-      case "in_progress":
-        return (
-          <Badge className="gap-1 bg-blue-100 text-blue-700">
-            <AlertCircle className="h-3 w-3" />
-            En Progreso
-          </Badge>
-        )
       case "submitted":
         return (
           <Badge className="gap-1 bg-amber-100 text-amber-700">
-            <CheckCircle className="h-3 w-3" />
+            <Clock className="h-3 w-3" />
             Por Calificar
           </Badge>
         )
@@ -335,7 +296,7 @@ export default function GradesPage() {
     setStatusFilter("all")
   }
 
-  if (isLoading) {
+  if (isLoading && assignments.length === 0 && !selectedCareer) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -352,7 +313,7 @@ export default function GradesPage() {
         {/* Cascade Filters */}
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-sm text-gray-500 mb-3">Selecciona para ver las calificaciones:</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {/* Career Select */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
@@ -396,36 +357,11 @@ export default function GradesPage() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Exam Select */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5" />
-                3. Examen
-              </label>
-              <Select
-                value={selectedExam}
-                onValueChange={setSelectedExam}
-                disabled={!selectedGroup}
-              >
-                <SelectTrigger className={`bg-white border-gray-200 ${!selectedGroup ? "opacity-50" : ""}`}>
-                  <SelectValue placeholder={selectedGroup ? "Selecciona un examen" : "Primero selecciona grupo"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredExams.map((exam) => (
-                    <SelectItem key={exam.id} value={exam.id}>
-                      {exam.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 
         {/* Content based on selection state */}
         {!selectedCareer ? (
-          // Initial state - prompt to select
           <Card className="border-gray-200">
             <CardContent className="flex h-64 flex-col items-center justify-center">
               <ClipboardList className="h-12 w-12 text-gray-300 mb-3" />
@@ -433,7 +369,7 @@ export default function GradesPage() {
                 Selecciona una carrera para comenzar
               </p>
               <p className="text-sm text-gray-400 mt-1">
-                Las calificaciones se mostrarán después de seleccionar carrera, grupo y examen
+                Las calificaciones se mostrarán después de seleccionar carrera y grupo
               </p>
             </CardContent>
           </Card>
@@ -446,12 +382,19 @@ export default function GradesPage() {
               </p>
             </CardContent>
           </Card>
-        ) : !selectedExam ? (
+        ) : isLoading ? (
           <Card className="border-gray-200">
             <CardContent className="flex h-48 flex-col items-center justify-center">
-              <FileText className="h-10 w-10 text-gray-300 mb-3" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <p className="text-sm text-muted-foreground mt-4">Cargando asignaciones...</p>
+            </CardContent>
+          </Card>
+        ) : assignments.length === 0 ? (
+          <Card className="border-gray-200">
+            <CardContent className="flex h-48 flex-col items-center justify-center">
+              <ClipboardList className="h-10 w-10 text-gray-300 mb-3" />
               <p className="text-muted-foreground">
-                Selecciona un examen para ver las calificaciones
+                No hay exámenes entregados o calificados para este grupo
               </p>
             </CardContent>
           </Card>
@@ -459,14 +402,10 @@ export default function GradesPage() {
           <>
             {/* Stats Row */}
             {stats && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-lg border border-gray-200 bg-white p-3">
                   <p className="text-xs text-gray-500">Total</p>
                   <p className="text-xl font-semibold">{stats.total}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs text-gray-500">Pendientes</p>
-                  <p className="text-xl font-semibold text-gray-500">{stats.pending + stats.inProgress}</p>
                 </div>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs text-amber-600">Por Calificar</p>
@@ -478,7 +417,7 @@ export default function GradesPage() {
                 </div>
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                   <p className="text-xs text-blue-600">Promedio</p>
-                  <p className="text-xl font-semibold text-blue-700">{stats.averageGrade || "—"}</p>
+                  <p className="text-xl font-semibold text-blue-700">{stats.average || "—"}</p>
                 </div>
               </div>
             )}
@@ -488,7 +427,7 @@ export default function GradesPage() {
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
-                  placeholder="Buscar estudiante..."
+                  placeholder="Buscar estudiante o examen..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 bg-white border-gray-200"
@@ -500,10 +439,8 @@ export default function GradesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pending">Pendiente</SelectItem>
-                  <SelectItem value="in_progress">En Progreso</SelectItem>
                   <SelectItem value="submitted">Por Calificar</SelectItem>
-                  <SelectItem value="graded">Calificado</SelectItem>
+                  <SelectItem value="graded">Calificados</SelectItem>
                 </SelectContent>
               </Select>
               {(search || statusFilter !== "all") && (
@@ -537,7 +474,7 @@ export default function GradesPage() {
               <Card className="border-gray-200">
                 <CardContent className="flex h-32 flex-col items-center justify-center">
                   <p className="text-muted-foreground">
-                    No se encontraron estudiantes con estos filtros
+                    No se encontraron asignaciones con estos filtros
                   </p>
                 </CardContent>
               </Card>
@@ -547,10 +484,11 @@ export default function GradesPage() {
                 <div className="grid grid-cols-12 gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <button
                     onClick={() => handleSort("name")}
-                    className="col-span-4 flex items-center gap-1 hover:text-gray-900 transition-colors text-left"
+                    className="col-span-3 flex items-center gap-1 hover:text-gray-900 transition-colors text-left"
                   >
                     Estudiante <SortIcon field="name" />
                   </button>
+                  <div className="col-span-3">Examen</div>
                   <button
                     onClick={() => handleSort("status")}
                     className="col-span-2 flex items-center gap-1 hover:text-gray-900 transition-colors text-left"
@@ -565,11 +503,11 @@ export default function GradesPage() {
                   </button>
                   <button
                     onClick={() => handleSort("grade")}
-                    className="col-span-2 flex items-center gap-1 hover:text-gray-900 transition-colors text-left"
+                    className="col-span-1 flex items-center gap-1 hover:text-gray-900 transition-colors text-left"
                   >
                     Nota <SortIcon field="grade" />
                   </button>
-                  <div className="col-span-2 text-right">Acciones</div>
+                  <div className="col-span-1 text-right">Acción</div>
                 </div>
 
                 {/* Table Body */}
@@ -581,40 +519,43 @@ export default function GradesPage() {
                         index % 2 === 0 ? "bg-white" : "bg-gray-50/30"
                       }`}
                     >
-                      <div className="col-span-4">
-                        <p className="font-medium text-gray-900">{assignment.student.full_name}</p>
+                      <div className="col-span-3">
+                        <p className="font-medium text-gray-900">{assignment.student.fullName}</p>
                         <p className="text-xs text-gray-500">{assignment.student.email}</p>
+                      </div>
+                      <div className="col-span-3 flex items-center text-gray-700">
+                        {assignment.exam.title}
                       </div>
                       <div className="col-span-2 flex items-center">
                         {getStatusBadge(assignment.status)}
                       </div>
                       <div className="col-span-2 flex items-center text-gray-600">
-                        {assignment.submitted_at
-                          ? new Date(assignment.submitted_at).toLocaleDateString("es", {
+                        {assignment.submittedAt
+                          ? new Date(assignment.submittedAt).toLocaleDateString("es", {
                               day: "2-digit",
                               month: "short",
                             })
                           : <span className="text-gray-400">—</span>}
                       </div>
-                      <div className="col-span-2 flex items-center">
+                      <div className="col-span-1 flex items-center">
                         {assignment.grade ? (
-                          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded ${FINAL_GRADE_LABELS[assignment.grade.final_grade].bg}`}>
-                            <span className={`font-bold ${FINAL_GRADE_LABELS[assignment.grade.final_grade].color}`}>
-                              {assignment.grade.final_grade}
-                            </span>
-                            <span className={`text-xs ${FINAL_GRADE_LABELS[assignment.grade.final_grade].color}`}>
-                              {FINAL_GRADE_LABELS[assignment.grade.final_grade].label}
+                          <div className={`inline-flex items-center px-2 py-0.5 rounded ${FINAL_GRADE_LABELS[assignment.grade.finalGrade].bg}`}>
+                            <span className={`font-bold ${FINAL_GRADE_LABELS[assignment.grade.finalGrade].color}`}>
+                              {assignment.grade.finalGrade}
                             </span>
                           </div>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </div>
-                      <div className="col-span-2 flex items-center justify-end">
+                      <div className="col-span-1 flex items-center justify-end">
                         <Button asChild variant="ghost" size="sm">
-                          <Link href={`/dashboard/grades/${assignment.id}`}>
-                            <Eye className="mr-1.5 h-4 w-4" />
-                            {assignment.status === "submitted" ? "Calificar" : "Ver"}
+                          <Link href={`/dashboard/grades/assignment/${assignment.id}`}>
+                            {assignment.status === "submitted" ? (
+                              <Pencil className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
                           </Link>
                         </Button>
                       </div>

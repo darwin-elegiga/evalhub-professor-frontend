@@ -48,6 +48,7 @@ export type {
   FinalGrade,
   StudentAnswer,
   Grade,
+  GradeWithDetails,
 
   // Exam Events (Monitoring)
   ExamEventType,

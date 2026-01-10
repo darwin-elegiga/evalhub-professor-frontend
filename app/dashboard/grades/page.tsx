@@ -1,10 +1,8 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState, useMemo } from "react"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -110,12 +108,9 @@ export default function GradesPage() {
 
   const loadGroups = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setGroups(MOCK_DATA.studentGroups)
-      } else {
-        const groupsData = await apiClient.get<StudentGroup[]>(API_CONFIG.ENDPOINTS.GROUPS)
-        setGroups(groupsData)
-      }
+      const res = await authFetch("/api/groups")
+      const groupsData: StudentGroup[] = await res.json()
+      setGroups(Array.isArray(groupsData) ? groupsData : [])
     } catch (error) {
       console.error("Error loading groups:", error)
     } finally {
@@ -126,26 +121,27 @@ export default function GradesPage() {
   const loadAssignments = async () => {
     setIsLoading(true)
     try {
-        // Fetch assignments for grading - need two separate calls since API only accepts single status
-        const [submittedData, gradedData] = await Promise.all([
-          apiClient.get<AssignmentWithDetails[]>(
-            `${API_CONFIG.ENDPOINTS.ASSIGNMENTS}?status=submitted`
-          ),
-          apiClient.get<AssignmentWithDetails[]>(
-            `${API_CONFIG.ENDPOINTS.ASSIGNMENTS}?status=graded`
-          ),
-        ])
+      // Fetch assignments for grading - need two separate calls since API only accepts single status
+      const [submittedRes, gradedRes] = await Promise.all([
+        authFetch("/api/assignments?status=submitted"),
+        authFetch("/api/assignments?status=graded"),
+      ])
+      const [submittedData, gradedData] = await Promise.all([
+        submittedRes.json(),
+        gradedRes.json(),
+      ])
 
-        // Combine and deduplicate by id
-        const allAssignments = [...submittedData, ...gradedData]
-        const uniqueAssignments = allAssignments.filter(
-          (assignment, index, self) =>
-            index === self.findIndex((a) => a.id === assignment.id)
-        )
+      // Combine and deduplicate by id
+      const allSubmitted = Array.isArray(submittedData) ? submittedData : []
+      const allGraded = Array.isArray(gradedData) ? gradedData : []
+      const allAssignments = [...allSubmitted, ...allGraded]
+      const uniqueAssignments = allAssignments.filter(
+        (assignment: AssignmentWithDetails, index: number, self: AssignmentWithDetails[]) =>
+          index === self.findIndex((a) => a.id === assignment.id)
+      )
 
-        setAssignments(uniqueAssignments)
-      }
-    catch (error) {
+      setAssignments(uniqueAssignments)
+    } catch (error) {
       console.error("Error loading assignments:", error)
     } finally {
       setIsLoading(false)

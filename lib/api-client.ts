@@ -155,6 +155,18 @@ export const apiClient = {
     fetchApi<T>(endpoint, { method: 'DELETE' }),
 }
 
+// Client-side fetch helper for internal API routes (automatically includes auth token)
+export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getToken()
+  const headers: HeadersInit = {
+    ...options.headers,
+  }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+  return fetch(url, { ...options, headers })
+}
+
 // Server-side API client for use in API routes (receives token as parameter)
 export async function serverFetch<T>(
   endpoint: string,

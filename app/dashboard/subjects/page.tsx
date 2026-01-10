@@ -1,6 +1,7 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useHeaderActions } from "@/lib/header-actions-context"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,9 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
-import { USE_MOCK_DATA, MOCK_DATA } from "@/lib/mock-data"
 import type { Subject, QuestionTopic } from "@/lib/types"
 import {
   Dialog,
@@ -169,24 +167,16 @@ export default function SubjectsPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setSubjects(MOCK_DATA.subjects.map(transformSubject))
-        setTopics(MOCK_DATA.topics.map(transformTopic))
-      } else {
-        try {
-          const [subjectsData, topicsData] = await Promise.all([
-            apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
-            apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
-          ])
-          setSubjects(subjectsData.map(transformSubject))
-          setTopics(topicsData.map(transformTopic))
-        } catch (apiError) {
-          // Fallback to mock data if API fails
-          console.warn("Error loading from API, using mock data as fallback:", apiError)
-          setSubjects(MOCK_DATA.subjects.map(transformSubject))
-          setTopics(MOCK_DATA.topics.map(transformTopic))
-        }
-      }
+      const [subjectsRes, topicsRes] = await Promise.all([
+        authFetch("/api/subjects"),
+        authFetch("/api/topics"),
+      ])
+      const [subjectsData, topicsData] = await Promise.all([
+        subjectsRes.json(),
+        topicsRes.json(),
+      ])
+      setSubjects(Array.isArray(subjectsData) ? subjectsData.map(transformSubject) : [])
+      setTopics(Array.isArray(topicsData) ? topicsData.map(transformTopic) : [])
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -237,41 +227,23 @@ export default function SubjectsPage() {
       }
 
       if (editingSubject) {
-        if (USE_MOCK_DATA) {
-          setSubjects((prev) =>
-            prev.map((s) =>
-              s.id === editingSubject.id
-                ? { ...s, ...payload, updatedAt: new Date().toISOString() }
-                : s
-            )
-          )
-        } else {
-          const updated = await apiClient.put<Subject>(
-            API_CONFIG.ENDPOINTS.SUBJECT_BY_ID(editingSubject.id),
-            payload
-          )
-          setSubjects((prev) =>
-            prev.map((s) => (s.id === editingSubject.id ? transformSubject(updated) : s))
-          )
-        }
+        const res = await authFetch(`/api/subjects/${editingSubject.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        const updated = await res.json()
+        setSubjects((prev) =>
+          prev.map((s) => (s.id === editingSubject.id ? transformSubject(updated) : s))
+        )
       } else {
-        if (USE_MOCK_DATA) {
-          const newSubject: Subject = {
-            id: crypto.randomUUID(),
-            name: payload.name,
-            description: payload.description,
-            color: payload.color,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }
-          setSubjects((prev) => [...prev, newSubject])
-        } else {
-          const newSubject = await apiClient.post<Subject>(
-            API_CONFIG.ENDPOINTS.SUBJECTS,
-            payload
-          )
-          setSubjects((prev) => [...prev, transformSubject(newSubject)])
-        }
+        const res = await authFetch("/api/subjects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        const newSubject = await res.json()
+        setSubjects((prev) => [...prev, transformSubject(newSubject)])
       }
 
       setIsSubjectModalOpen(false)
@@ -289,15 +261,9 @@ export default function SubjectsPage() {
     setIsDeleting(true)
 
     try {
-      if (USE_MOCK_DATA) {
-        setSubjects((prev) => prev.filter((s) => s.id !== deleteSubjectId))
-        // Also remove topics associated with this subject
-        setTopics((prev) => prev.filter((t) => t.subjectId !== deleteSubjectId))
-      } else {
-        await apiClient.delete(API_CONFIG.ENDPOINTS.SUBJECT_BY_ID(deleteSubjectId))
-        setSubjects((prev) => prev.filter((s) => s.id !== deleteSubjectId))
-        setTopics((prev) => prev.filter((t) => t.subjectId !== deleteSubjectId))
-      }
+      await authFetch(`/api/subjects/${deleteSubjectId}`, { method: "DELETE" })
+      setSubjects((prev) => prev.filter((s) => s.id !== deleteSubjectId))
+      setTopics((prev) => prev.filter((t) => t.subjectId !== deleteSubjectId))
       setDeleteSubjectId(null)
     } catch (error) {
       console.error("Error deleting subject:", error)
@@ -352,42 +318,23 @@ export default function SubjectsPage() {
       }
 
       if (editingTopic) {
-        if (USE_MOCK_DATA) {
-          setTopics((prev) =>
-            prev.map((t) =>
-              t.id === editingTopic.id
-                ? { ...t, name: payload.name, description: payload.description, color: payload.color }
-                : t
-            )
-          )
-        } else {
-          const updated = await apiClient.put<QuestionTopic>(
-            API_CONFIG.ENDPOINTS.TOPIC_BY_ID(editingTopic.id),
-            payload
-          )
-          setTopics((prev) =>
-            prev.map((t) => (t.id === editingTopic.id ? transformTopic(updated) : t))
-          )
-        }
+        const res = await authFetch(`/api/topics/${editingTopic.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        const updated = await res.json()
+        setTopics((prev) =>
+          prev.map((t) => (t.id === editingTopic.id ? transformTopic(updated) : t))
+        )
       } else {
-        if (USE_MOCK_DATA) {
-          const newTopic: QuestionTopic = {
-            id: crypto.randomUUID(),
-            teacherId: user?.id || "1",
-            subjectId: topicSubjectId,
-            name: payload.name,
-            description: payload.description,
-            color: payload.color,
-            createdAt: new Date().toISOString(),
-          }
-          setTopics((prev) => [...prev, newTopic])
-        } else {
-          const newTopic = await apiClient.post<QuestionTopic>(
-            API_CONFIG.ENDPOINTS.TOPICS,
-            payload
-          )
-          setTopics((prev) => [...prev, transformTopic(newTopic)])
-        }
+        const res = await authFetch("/api/topics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        const newTopic = await res.json()
+        setTopics((prev) => [...prev, transformTopic(newTopic)])
       }
 
       setIsTopicModalOpen(false)
@@ -406,12 +353,8 @@ export default function SubjectsPage() {
     setIsDeleting(true)
 
     try {
-      if (USE_MOCK_DATA) {
-        setTopics((prev) => prev.filter((t) => t.id !== deleteTopicId))
-      } else {
-        await apiClient.delete(API_CONFIG.ENDPOINTS.TOPIC_BY_ID(deleteTopicId))
-        setTopics((prev) => prev.filter((t) => t.id !== deleteTopicId))
-      }
+      await authFetch(`/api/topics/${deleteTopicId}`, { method: "DELETE" })
+      setTopics((prev) => prev.filter((t) => t.id !== deleteTopicId))
       setDeleteTopicId(null)
     } catch (error) {
       console.error("Error deleting topic:", error)

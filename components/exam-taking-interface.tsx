@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { authFetch } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -63,7 +64,7 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
       details: Record<string, unknown> = {}
     ) => {
       try {
-        await fetch("/api/exam/event", {
+        await authFetch("/api/exam/event", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -303,7 +304,7 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
 
   const handleStart = async () => {
     try {
-      await fetch("/api/exam/start", {
+      await authFetch("/api/exam/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assignment_id: assignment.id }),
@@ -339,7 +340,7 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
     lastAnswerTimeRef.current = Date.now()
 
     try {
-      await fetch("/api/exam/answer", {
+      await authFetch("/api/exam/answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -367,7 +368,7 @@ export function ExamTakingInterface({ assignment, questions, existingAnswers }: 
       await logEvent("exam_submitted", "info", { message: "Examen enviado correctamente" })
 
       // Submit exam
-      const response = await fetch("/api/exam/submit", {
+      const response = await authFetch("/api/exam/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assignment_id: assignment.id }),

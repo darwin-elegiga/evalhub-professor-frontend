@@ -1,14 +1,13 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/lib/auth-context"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useForm, Controller } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
+import { useAuth } from "@/lib/auth-context";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { apiClient } from "@/lib/api-client";
+import { API_CONFIG } from "@/lib/api-config";
 import type {
   Subject,
   QuestionTopic,
@@ -17,29 +16,47 @@ import type {
   MultipleChoiceConfig,
   NumericConfig,
   GraphClickConfig,
-} from "@/lib/types"
-import { ArrowLeft, Plus, Trash2, Save, GripVertical, MousePointer, Eye } from "lucide-react"
-import { GraphEditor, type GraphConfig } from "@/components/graph-editor"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+} from "@/lib/types";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Save,
+  GripVertical,
+  MousePointer,
+  Eye,
+} from "lucide-react";
+import { GraphEditor, type GraphConfig } from "@/components/graph-editor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TiptapEditor } from "@/components/tiptap-editor"
-import Link from "next/link"
-import { toast } from "sonner"
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TiptapEditor } from "@/components/tiptap-editor";
+import Link from "next/link";
+import { toast } from "sonner";
 
-const QUESTION_TYPES: { value: QuestionType; label: string; description: string }[] = [
+const QUESTION_TYPES: {
+  value: QuestionType;
+  label: string;
+  description: string;
+}[] = [
   {
     value: "multiple_choice",
     label: "Opción Múltiple",
@@ -60,13 +77,13 @@ const QUESTION_TYPES: { value: QuestionType; label: string; description: string 
     label: "Respuesta Abierta",
     description: "El estudiante escribe una respuesta de texto libre",
   },
-]
+];
 
 const DIFFICULTY_OPTIONS: { value: QuestionDifficulty; label: string }[] = [
   { value: "easy", label: "Fácil" },
   { value: "medium", label: "Medio" },
   { value: "hard", label: "Difícil" },
-]
+];
 
 // Validation schema
 const questionSchema = z.object({
@@ -74,43 +91,51 @@ const questionSchema = z.object({
   content: z.string().min(1, "El enunciado es requerido"),
   subjectId: z.string().optional(),
   topicId: z.string().optional(),
-  question_type: z.enum(["multiple_choice", "numeric", "graph_click", "image_hotspot", "open_text"]),
+  question_type: z.enum([
+    "multiple_choice",
+    "numeric",
+    "graph_click",
+    "image_hotspot",
+    "open_text",
+  ]),
   difficulty: z.enum(["easy", "medium", "hard"]),
   estimated_time_minutes: z.number().min(1).max(120).optional(),
   weight: z.number().min(1).max(10), // Peso relativo de la pregunta en el examen
   tags: z.array(z.string()),
-})
+});
 
-type QuestionFormData = z.infer<typeof questionSchema>
+type QuestionFormData = z.infer<typeof questionSchema>;
 
 interface MultipleChoiceOption {
-  id: string
-  text: string
-  is_correct: boolean
+  id: string;
+  text: string;
+  is_correct: boolean;
 }
 
 export default function CreateQuestionPage() {
-  const { user, loading } = useAuth()
-  const router = useRouter()
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [topics, setTopics] = useState<QuestionTopic[]>([])
-  const [loadingData, setLoadingData] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [topics, setTopics] = useState<QuestionTopic[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Question type specific state
   const [mcOptions, setMcOptions] = useState<MultipleChoiceOption[]>([
     { id: crypto.randomUUID(), text: "", is_correct: false },
-  ])
-  const [mcAllowMultiple, setMcAllowMultiple] = useState(false)
-  const [mcShuffleOptions, setMcShuffleOptions] = useState(true)
+  ]);
+  const [mcAllowMultiple, setMcAllowMultiple] = useState(false);
+  const [mcShuffleOptions, setMcShuffleOptions] = useState(true);
 
   // Numeric config state
-  const [numericValue, setNumericValue] = useState<number>(0)
-  const [numericValueStr, setNumericValueStr] = useState<string>("0")
-  const [numericTolerance, setNumericTolerance] = useState<number>(5)
-  const [numericToleranceStr, setNumericToleranceStr] = useState<string>("5")
-  const [numericToleranceType, setNumericToleranceType] = useState<"percentage" | "absolute">("percentage")
-  const [numericUnit, setNumericUnit] = useState<string>("")
+  const [numericValue, setNumericValue] = useState<number>(0);
+  const [numericValueStr, setNumericValueStr] = useState<string>("0");
+  const [numericTolerance, setNumericTolerance] = useState<number>(5);
+  const [numericToleranceStr, setNumericToleranceStr] = useState<string>("5");
+  const [numericToleranceType, setNumericToleranceType] = useState<
+    "percentage" | "absolute"
+  >("percentage");
+  const [numericUnit, setNumericUnit] = useState<string>("");
 
   // Graph config state
   const [graphConfig, setGraphConfig] = useState<GraphConfig>({
@@ -124,14 +149,14 @@ export default function CreateQuestionPage() {
     functions: [],
     toleranceRadius: 0.5,
     isInteractive: false,
-  })
+  });
 
   // Tags state
-  const [tagInput, setTagInput] = useState("")
-  const [tags, setTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
 
   // Time input state (to allow free typing)
-  const [timeInputStr, setTimeInputStr] = useState("5")
+  const [timeInputStr, setTimeInputStr] = useState("5");
 
   const {
     control,
@@ -152,113 +177,105 @@ export default function CreateQuestionPage() {
       weight: 1,
       tags: [],
     },
-  })
+  });
 
-  const questionType = watch("question_type")
-  const selectedSubjectId = watch("subjectId")
+  const questionType = watch("question_type");
+  const selectedSubjectId = watch("subjectId");
 
   // Filter topics by selected subject
   const filteredTopics = selectedSubjectId
     ? topics.filter((t) => t.subjectId === selectedSubjectId)
-    : []
+    : [];
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/auth/login")
+      router.push("/auth/login");
     }
-  }, [user, loading, router])
+  }, [user, loading, router]);
 
   useEffect(() => {
     if (user) {
-      loadData()
+      loadData();
     }
-  }, [user])
+  }, [user]);
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setSubjects(MOCK_DATA.subjects)
-        setTopics(MOCK_DATA.topics.map((t: any) => ({
-          id: t.id,
-          teacherId: t.teacherId || t.teacher_id,
-          subjectId: t.subjectId || t.subject_id,
-          name: t.name,
-          description: t.description,
-          color: t.color,
-          createdAt: t.createdAt || t.created_at,
-        })))
-      } else {
-        try {
-          const [subjectsData, topicsData] = await Promise.all([
-            apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
-            apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
-          ])
-          setSubjects(subjectsData)
-          setTopics(topicsData)
-        } catch (apiError) {
-          console.warn("Error loading from API, using mock data as fallback:", apiError)
-          setSubjects(MOCK_DATA.subjects)
-          setTopics(MOCK_DATA.topics.map((t: any) => ({
-            id: t.id,
-            teacherId: t.teacherId || t.teacher_id,
-            subjectId: t.subjectId || t.subject_id,
-            name: t.name,
-            description: t.description,
-            color: t.color,
-            createdAt: t.createdAt || t.created_at,
-          })))
-        }
+      try {
+        const [subjectsData, topicsData] = await Promise.all([
+          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
+          apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
+        ]);
+        setSubjects(subjectsData);
+        setTopics(topicsData);
+      } catch (apiError) {
+        console.warn(
+          "Error loading from API, using mock data as fallback:",
+          apiError
+        );
       }
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("Error loading data:", error);
     } finally {
-      setLoadingData(false)
+      setLoadingData(false);
     }
-  }
+  };
 
   const addMcOption = () => {
-    setMcOptions([...mcOptions, { id: crypto.randomUUID(), text: "", is_correct: false }])
-  }
+    setMcOptions([
+      ...mcOptions,
+      { id: crypto.randomUUID(), text: "", is_correct: false },
+    ]);
+  };
 
   const removeMcOption = (id: string) => {
     if (mcOptions.length > 1) {
-      setMcOptions(mcOptions.filter((opt) => opt.id !== id))
+      setMcOptions(mcOptions.filter((opt) => opt.id !== id));
     }
-  }
+  };
 
-  const updateMcOption = (id: string, updates: Partial<MultipleChoiceOption>) => {
-    setMcOptions(mcOptions.map((opt) => (opt.id === id ? { ...opt, ...updates } : opt)))
-  }
+  const updateMcOption = (
+    id: string,
+    updates: Partial<MultipleChoiceOption>
+  ) => {
+    setMcOptions(
+      mcOptions.map((opt) => (opt.id === id ? { ...opt, ...updates } : opt))
+    );
+  };
 
   const addTag = () => {
-    const trimmedTag = tagInput.trim().toLowerCase()
+    const trimmedTag = tagInput.trim().toLowerCase();
     if (trimmedTag && !tags.includes(trimmedTag)) {
-      const newTags = [...tags, trimmedTag]
-      setTags(newTags)
-      setValue("tags", newTags)
-      setTagInput("")
+      const newTags = [...tags, trimmedTag];
+      setTags(newTags);
+      setValue("tags", newTags);
+      setTagInput("");
     }
-  }
+  };
 
   const removeTag = (tag: string) => {
-    const newTags = tags.filter((t) => t !== tag)
-    setTags(newTags)
-    setValue("tags", newTags)
-  }
+    const newTags = tags.filter((t) => t !== tag);
+    setTags(newTags);
+    setValue("tags", newTags);
+  };
 
   const onSubmit = async (data: QuestionFormData) => {
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
       // Build type config based on question type
-      let typeConfig: MultipleChoiceConfig | NumericConfig | GraphClickConfig | object = {}
+      let typeConfig:
+        | MultipleChoiceConfig
+        | NumericConfig
+        | GraphClickConfig
+        | object = {};
 
       if (data.question_type === "multiple_choice") {
-        const hasCorrect = mcOptions.some((opt) => opt.is_correct)
+        const hasCorrect = mcOptions.some((opt) => opt.is_correct);
         if (!hasCorrect) {
-          toast.error("Debe haber al menos una opción correcta")
-          setIsSubmitting(false)
-          return
+          toast.error("Debe haber al menos una opción correcta");
+          setIsSubmitting(false);
+          return;
         }
 
         typeConfig = {
@@ -270,7 +287,7 @@ export default function CreateQuestionPage() {
           })),
           allowMultiple: mcAllowMultiple,
           shuffleOptions: mcShuffleOptions,
-        }
+        };
       } else if (data.question_type === "numeric") {
         typeConfig = {
           correctValue: numericValue,
@@ -278,20 +295,23 @@ export default function CreateQuestionPage() {
           toleranceType: numericToleranceType,
           unit: numericUnit || null,
           showUnitInput: false,
-        }
+        };
       } else if (data.question_type === "graph_click") {
         // Validate graph config if interactive
         if (graphConfig.isInteractive) {
           const hasValidAnswer =
             (graphConfig.answerType === "point" && graphConfig.correctPoint) ||
-            (graphConfig.answerType === "function" && graphConfig.correctFunctionId) ||
+            (graphConfig.answerType === "function" &&
+              graphConfig.correctFunctionId) ||
             (graphConfig.answerType === "area" && graphConfig.correctArea) ||
-            (!graphConfig.answerType && graphConfig.correctPoint)
+            (!graphConfig.answerType && graphConfig.correctPoint);
 
           if (!hasValidAnswer) {
-            toast.error("Debes definir la respuesta correcta para preguntas interactivas")
-            setIsSubmitting(false)
-            return
+            toast.error(
+              "Debes definir la respuesta correcta para preguntas interactivas"
+            );
+            setIsSubmitting(false);
+            return;
           }
         }
 
@@ -313,7 +333,7 @@ export default function CreateQuestionPage() {
           answerType: graphConfig.answerType,
           correctFunctionId: graphConfig.correctFunctionId,
           correctArea: graphConfig.correctArea,
-        }
+        };
       }
 
       // Build payload with camelCase for backend
@@ -328,44 +348,28 @@ export default function CreateQuestionPage() {
         weight: data.weight,
         tags,
         typeConfig,
-      }
-
-      if (USE_MOCK_DATA) {
-        // Add to mock data
-        const newQuestion = {
-          id: crypto.randomUUID(),
-          ...questionData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          times_used: 0,
-          average_score: 0,
-        }
-        MOCK_DATA.bankQuestions.push(newQuestion as any)
-        toast.success("Pregunta creada exitosamente")
-        router.push("/dashboard/questions")
-      } else {
-        await apiClient.post(API_CONFIG.ENDPOINTS.QUESTIONS, questionData)
-        toast.success("Pregunta creada exitosamente")
-        router.push("/dashboard/questions")
-      }
+      };
+      await apiClient.post(API_CONFIG.ENDPOINTS.QUESTIONS, questionData);
+      toast.success("Pregunta creada exitosamente");
+      router.push("/dashboard/questions");
     } catch (error) {
-      console.error("Error creating question:", error)
-      toast.error("Error al crear la pregunta")
+      console.error("Error creating question:", error);
+      toast.error("Error al crear la pregunta");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   if (loading || loadingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         Cargando...
       </div>
-    )
+    );
   }
 
   if (!user) {
-    return null
+    return null;
   }
 
   return (
@@ -379,7 +383,9 @@ export default function CreateQuestionPage() {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Crear Nueva Pregunta</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Crear Nueva Pregunta
+          </h1>
           <p className="text-muted-foreground">
             Agrega una pregunta a tu banco de preguntas
           </p>
@@ -390,7 +396,9 @@ export default function CreateQuestionPage() {
           <Card>
             <CardHeader>
               <CardTitle>Información Básica</CardTitle>
-              <CardDescription>Título y metadatos de la pregunta</CardDescription>
+              <CardDescription>
+                Título y metadatos de la pregunta
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -421,9 +429,9 @@ export default function CreateQuestionPage() {
                       <Select
                         value={field.value}
                         onValueChange={(value) => {
-                          field.onChange(value)
+                          field.onChange(value);
                           // Clear topic when subject changes
-                          setValue("topicId", "")
+                          setValue("topicId", "");
                         }}
                       >
                         <SelectTrigger>
@@ -450,16 +458,20 @@ export default function CreateQuestionPage() {
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={!selectedSubjectId || filteredTopics.length === 0}
+                        disabled={
+                          !selectedSubjectId || filteredTopics.length === 0
+                        }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={
-                            !selectedSubjectId
-                              ? "Primero selecciona una asignatura"
-                              : filteredTopics.length === 0
+                          <SelectValue
+                            placeholder={
+                              !selectedSubjectId
+                                ? "Primero selecciona una asignatura"
+                                : filteredTopics.length === 0
                                 ? "No hay temas para esta asignatura"
                                 : "Selecciona un tema"
-                          } />
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {filteredTopics.map((topic) => (
@@ -487,7 +499,10 @@ export default function CreateQuestionPage() {
                     name="difficulty"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -504,7 +519,9 @@ export default function CreateQuestionPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Peso: <span className="font-bold">{watch("weight")}</span></Label>
+                  <Label htmlFor="weight">
+                    Peso: <span className="font-bold">{watch("weight")}</span>
+                  </Label>
                   <Controller
                     name="weight"
                     control={control}
@@ -534,26 +551,26 @@ export default function CreateQuestionPage() {
                       <Input
                         value={timeInputStr}
                         onChange={(e) => {
-                          const val = e.target.value
+                          const val = e.target.value;
                           if (val === "") {
-                            setTimeInputStr("")
-                            field.onChange(undefined)
+                            setTimeInputStr("");
+                            field.onChange(undefined);
                           } else if (/^\d*$/.test(val)) {
-                            setTimeInputStr(val)
-                            const num = parseInt(val, 10)
+                            setTimeInputStr(val);
+                            const num = parseInt(val, 10);
                             if (!isNaN(num) && num >= 1 && num <= 120) {
-                              field.onChange(num)
+                              field.onChange(num);
                             }
                           }
                         }}
                         onBlur={() => {
-                          const num = parseInt(timeInputStr, 10)
+                          const num = parseInt(timeInputStr, 10);
                           if (timeInputStr === "" || isNaN(num) || num < 1) {
-                            setTimeInputStr("5")
-                            field.onChange(5)
+                            setTimeInputStr("5");
+                            field.onChange(5);
                           } else if (num > 120) {
-                            setTimeInputStr("120")
-                            field.onChange(120)
+                            setTimeInputStr("120");
+                            field.onChange(120);
                           }
                         }}
                         placeholder="5"
@@ -573,8 +590,8 @@ export default function CreateQuestionPage() {
                     placeholder="Agregar tag..."
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        e.preventDefault()
-                        addTag()
+                        e.preventDefault();
+                        addTag();
                       }
                     }}
                   />
@@ -607,7 +624,8 @@ export default function CreateQuestionPage() {
             <CardHeader>
               <CardTitle>Enunciado de la Pregunta</CardTitle>
               <CardDescription>
-                Usa el editor para escribir el enunciado. Puedes incluir ecuaciones LaTeX con $...$
+                Usa el editor para escribir el enunciado. Puedes incluir
+                ecuaciones LaTeX con $...$
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -624,7 +642,9 @@ export default function CreateQuestionPage() {
                 )}
               />
               {errors.content && (
-                <p className="text-sm text-red-500 mt-2">{errors.content.message}</p>
+                <p className="text-sm text-red-500 mt-2">
+                  {errors.content.message}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -633,7 +653,9 @@ export default function CreateQuestionPage() {
           <Card>
             <CardHeader>
               <CardTitle>Tipo de Pregunta</CardTitle>
-              <CardDescription>Selecciona cómo responderán los estudiantes</CardDescription>
+              <CardDescription>
+                Selecciona cómo responderán los estudiantes
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Controller
@@ -650,42 +672,60 @@ export default function CreateQuestionPage() {
                     </TabsList>
 
                     {/* Multiple Choice Config */}
-                    <TabsContent value="multiple_choice" className="space-y-4 mt-4">
+                    <TabsContent
+                      value="multiple_choice"
+                      className="space-y-4 mt-4"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <Checkbox
                             id="allowMultiple"
                             checked={mcAllowMultiple}
-                            onCheckedChange={(checked) => setMcAllowMultiple(checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              setMcAllowMultiple(checked as boolean)
+                            }
                           />
-                          <Label htmlFor="allowMultiple">Permitir múltiples respuestas</Label>
+                          <Label htmlFor="allowMultiple">
+                            Permitir múltiples respuestas
+                          </Label>
                         </div>
                         <div className="flex items-center gap-2">
                           <Checkbox
                             id="shuffleOptions"
                             checked={mcShuffleOptions}
-                            onCheckedChange={(checked) => setMcShuffleOptions(checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              setMcShuffleOptions(checked as boolean)
+                            }
                           />
-                          <Label htmlFor="shuffleOptions">Mezclar opciones</Label>
+                          <Label htmlFor="shuffleOptions">
+                            Mezclar opciones
+                          </Label>
                         </div>
                       </div>
 
                       <div className="space-y-3">
                         <Label>Opciones de respuesta</Label>
                         {mcOptions.map((option, index) => (
-                          <div key={option.id} className="flex items-start gap-2 rounded-md border p-3">
+                          <div
+                            key={option.id}
+                            className="flex items-start gap-2 rounded-md border p-3"
+                          >
                             <GripVertical className="h-5 w-5 text-muted-foreground mt-2 cursor-grab" />
                             <Checkbox
                               checked={option.is_correct}
                               onCheckedChange={(checked) =>
-                                updateMcOption(option.id, { is_correct: checked as boolean })
+                                updateMcOption(option.id, {
+                                  is_correct: checked as boolean,
+                                })
                               }
                               className="mt-2"
                             />
                             <div className="flex-1">
                               <TiptapEditor
                                 content={option.text}
-                                onChange={(text) => updateMcOption(option.id, { text })}
+                                onChange={(text) =>
+                                  updateMcOption(option.id, { text })
+                                }
                                 placeholder={`Opción ${index + 1}`}
                                 minHeight="60px"
                               />
@@ -701,7 +741,11 @@ export default function CreateQuestionPage() {
                             </Button>
                           </div>
                         ))}
-                        <Button type="button" variant="outline" onClick={addMcOption}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addMcOption}
+                        >
                           <Plus className="mr-2 h-4 w-4" />
                           Agregar Opción
                         </Button>
@@ -716,24 +760,34 @@ export default function CreateQuestionPage() {
                           <Input
                             value={numericValueStr}
                             onChange={(e) => {
-                              const val = e.target.value
+                              const val = e.target.value;
                               // Allow empty, negative sign, decimal point, or valid numbers
-                              if (val === "" || val === "-" || val === "." || val === "-.") {
-                                setNumericValueStr(val)
-                                setNumericValue(0)
+                              if (
+                                val === "" ||
+                                val === "-" ||
+                                val === "." ||
+                                val === "-."
+                              ) {
+                                setNumericValueStr(val);
+                                setNumericValue(0);
                               } else if (/^-?\d*\.?\d*$/.test(val)) {
-                                setNumericValueStr(val)
-                                const num = parseFloat(val)
+                                setNumericValueStr(val);
+                                const num = parseFloat(val);
                                 if (!isNaN(num)) {
-                                  setNumericValue(num)
+                                  setNumericValue(num);
                                 }
                               }
                             }}
                             onBlur={() => {
                               // Clean up on blur
-                              if (numericValueStr === "" || numericValueStr === "-" || numericValueStr === "." || numericValueStr === "-.") {
-                                setNumericValueStr("0")
-                                setNumericValue(0)
+                              if (
+                                numericValueStr === "" ||
+                                numericValueStr === "-" ||
+                                numericValueStr === "." ||
+                                numericValueStr === "-."
+                              ) {
+                                setNumericValueStr("0");
+                                setNumericValue(0);
                               }
                             }}
                             placeholder="0"
@@ -755,24 +809,27 @@ export default function CreateQuestionPage() {
                           <Input
                             value={numericToleranceStr}
                             onChange={(e) => {
-                              const val = e.target.value
+                              const val = e.target.value;
                               // Allow empty, decimal point, or positive numbers
                               if (val === "" || val === ".") {
-                                setNumericToleranceStr(val)
-                                setNumericTolerance(0)
+                                setNumericToleranceStr(val);
+                                setNumericTolerance(0);
                               } else if (/^\d*\.?\d*$/.test(val)) {
-                                setNumericToleranceStr(val)
-                                const num = parseFloat(val)
+                                setNumericToleranceStr(val);
+                                const num = parseFloat(val);
                                 if (!isNaN(num)) {
-                                  setNumericTolerance(num)
+                                  setNumericTolerance(num);
                                 }
                               }
                             }}
                             onBlur={() => {
                               // Clean up on blur
-                              if (numericToleranceStr === "" || numericToleranceStr === ".") {
-                                setNumericToleranceStr("0")
-                                setNumericTolerance(0)
+                              if (
+                                numericToleranceStr === "" ||
+                                numericToleranceStr === "."
+                              ) {
+                                setNumericToleranceStr("0");
+                                setNumericTolerance(0);
                               }
                             }}
                             placeholder="5"
@@ -782,14 +839,22 @@ export default function CreateQuestionPage() {
                           <Label>Tipo de tolerancia</Label>
                           <Select
                             value={numericToleranceType}
-                            onValueChange={(v) => setNumericToleranceType(v as "percentage" | "absolute")}
+                            onValueChange={(v) =>
+                              setNumericToleranceType(
+                                v as "percentage" | "absolute"
+                              )
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="percentage">Porcentaje (%)</SelectItem>
-                              <SelectItem value="absolute">Valor absoluto</SelectItem>
+                              <SelectItem value="percentage">
+                                Porcentaje (%)
+                              </SelectItem>
+                              <SelectItem value="absolute">
+                                Valor absoluto
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -799,8 +864,16 @@ export default function CreateQuestionPage() {
                         <p className="text-sm text-blue-700">
                           <strong>Rango aceptado:</strong>{" "}
                           {numericToleranceType === "percentage"
-                            ? `${(numericValue * (1 - numericTolerance / 100)).toFixed(2)} a ${(numericValue * (1 + numericTolerance / 100)).toFixed(2)}`
-                            : `${numericValue - numericTolerance} a ${numericValue + numericTolerance}`}
+                            ? `${(
+                                numericValue *
+                                (1 - numericTolerance / 100)
+                              ).toFixed(2)} a ${(
+                                numericValue *
+                                (1 + numericTolerance / 100)
+                              ).toFixed(2)}`
+                            : `${numericValue - numericTolerance} a ${
+                                numericValue + numericTolerance
+                              }`}
                           {numericUnit && ` ${numericUnit}`}
                         </p>
                       </div>
@@ -814,7 +887,12 @@ export default function CreateQuestionPage() {
                         <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
                           <button
                             type="button"
-                            onClick={() => setGraphConfig({ ...graphConfig, isInteractive: false })}
+                            onClick={() =>
+                              setGraphConfig({
+                                ...graphConfig,
+                                isInteractive: false,
+                              })
+                            }
                             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
                               !graphConfig.isInteractive
                                 ? "bg-white text-gray-900 shadow-sm"
@@ -826,7 +904,12 @@ export default function CreateQuestionPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setGraphConfig({ ...graphConfig, isInteractive: true })}
+                            onClick={() =>
+                              setGraphConfig({
+                                ...graphConfig,
+                                isInteractive: true,
+                              })
+                            }
                             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
                               graphConfig.isInteractive
                                 ? "bg-white text-gray-900 shadow-sm"
@@ -855,14 +938,19 @@ export default function CreateQuestionPage() {
                       {graphConfig.isInteractive && (
                         <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
                           <div className="flex items-center gap-2 text-gray-600">
-                            <span className="text-gray-400">Punto correcto:</span>
+                            <span className="text-gray-400">
+                              Punto correcto:
+                            </span>
                             <span className="font-mono font-medium">
-                              ({graphConfig.correctPoint?.x ?? 0}, {graphConfig.correctPoint?.y ?? 0})
+                              ({graphConfig.correctPoint?.x ?? 0},{" "}
+                              {graphConfig.correctPoint?.y ?? 0})
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-600">
                             <span className="text-gray-400">Tolerancia:</span>
-                            <span className="font-mono font-medium">{graphConfig.toleranceRadius}</span>
+                            <span className="font-mono font-medium">
+                              {graphConfig.toleranceRadius}
+                            </span>
                           </div>
                           <span className="text-xs text-gray-400 ml-auto">
                             Configura en la pestaña "Respuesta"
@@ -874,7 +962,8 @@ export default function CreateQuestionPage() {
                     {/* Open Text Config */}
                     <TabsContent value="open_text" className="mt-4">
                       <p className="text-muted-foreground">
-                        Los estudiantes escribirán una respuesta libre. Deberás calificar manualmente.
+                        Los estudiantes escribirán una respuesta libre. Deberás
+                        calificar manualmente.
                       </p>
                     </TabsContent>
                   </Tabs>
@@ -885,7 +974,11 @@ export default function CreateQuestionPage() {
 
           {/* Submit */}
           <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
@@ -896,5 +989,5 @@ export default function CreateQuestionPage() {
         </form>
       </div>
     </div>
-  )
+  );
 }

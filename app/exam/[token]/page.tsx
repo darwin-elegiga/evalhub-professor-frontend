@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import { ExamTakingInterface } from "@/components/exam-taking-interface"
@@ -30,63 +29,12 @@ export default function ExamPage() {
 
   const loadExamData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        // Find assignment by magic token
-        const foundAssignment = MOCK_DATA.assignments.find(
-          (a) => a.magic_token === token
-        )
-
-        if (!foundAssignment) {
-          setError("Enlace de examen inválido o expirado")
-          setLoading(false)
-          return
-        }
-
-        const student = MOCK_DATA.students.find(
-          (s) => s.id === foundAssignment.student_id
-        )
-        const exam = MOCK_DATA.exams.find(
-          (e) => e.id === foundAssignment.exam_id
-        )
-
-        setAssignment({
-          ...foundAssignment,
-          student: {
-            full_name: student?.full_name || "Estudiante",
-            email: student?.email || "",
-          },
-          exam: {
-            id: exam?.id || "",
-            title: exam?.title || "Examen",
-            description: exam?.description || "",
-            duration_minutes: exam?.duration_minutes || null,
-          },
-        })
-
-        // Get questions with options
-        const examQuestions = MOCK_DATA.questions
-          .filter((q) => q.exam_id === foundAssignment.exam_id)
-          .map((q) => ({
-            ...q,
-            answer_options: MOCK_DATA.answerOptions.filter(
-              (opt) => opt.question_id === q.id
-            ),
-          }))
-        setQuestions(examQuestions)
-
-        // Get existing answers
-        const answers = MOCK_DATA.studentAnswers.filter(
-          (a) => a.assignment_id === foundAssignment.id
-        )
-        setExistingAnswers(answers)
-      } else {
         const data = await apiClient.get<ExamTokenResponse>(
           API_CONFIG.ENDPOINTS.ASSIGNMENT_BY_TOKEN(token)
         )
         setAssignment(data.assignment)
         setQuestions(data.questions)
         setExistingAnswers(data.existingAnswers || [])
-      }
     } catch (error) {
       console.error("Error loading exam:", error)
       setError("Error al cargar el examen")
@@ -160,11 +108,11 @@ export default function ExamPage() {
                     {assignment.status === "graded" ? "Calificado" : "Entregado"}
                   </Badge>
                 </div>
-                {assignment.submitted_at && (
+                {assignment.submittedAt && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Fecha de entrega:</span>
                     <span className="font-medium">
-                      {new Date(assignment.submitted_at).toLocaleString()}
+                      {new Date(assignment.submittedAt).toLocaleString()}
                     </span>
                   </div>
                 )}

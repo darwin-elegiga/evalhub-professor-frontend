@@ -1,18 +1,15 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import { GradingInterface } from "@/components/grading-interface"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import type { ExamEvent, Grade } from "@/lib/types"
-import type { GradingDataResponse, GradingQuestion, GradingAssignment } from "@/lib/api-types"
+import type { GradingDataResponse } from "@/lib/api-types"
 
 export default function GradingPage() {
   const { user, loading } = useAuth()
@@ -37,95 +34,9 @@ export default function GradingPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        const foundAssignment = MOCK_DATA.assignments.find(
-          (a) => a.id === assignmentId
-        )
-        if (foundAssignment) {
-          const student = MOCK_DATA.students.find(
-            (s) => s.id === foundAssignment.student_id
-          )
-          const exam = MOCK_DATA.exams.find(
-            (e) => e.id === foundAssignment.exam_id
-          )
-
-          const assignment: GradingAssignment = {
-            id: foundAssignment.id,
-            status: foundAssignment.status as "pending" | "in_progress" | "submitted" | "graded",
-            startedAt: foundAssignment.started_at,
-            submittedAt: foundAssignment.submitted_at,
-            student: {
-              id: student?.id || "",
-              fullName: student?.fullName || "Estudiante",
-              email: student?.email || "",
-              career: student?.career,
-            },
-            exam: {
-              id: exam?.id || "",
-              title: exam?.title || "Examen",
-              description: exam?.description || null,
-            },
-          }
-
-          // Get questions with answers
-          const questions: GradingQuestion[] = MOCK_DATA.questions
-            .filter((q) => q.exam_id === foundAssignment.exam_id)
-            .map((q) => {
-              const studentAnswer = MOCK_DATA.studentAnswers.find(
-                (a) => a.assignment_id === assignmentId && a.question_id === q.id
-              )
-              return {
-                id: q.id,
-                title: q.title || `Pregunta ${q.id}`,
-                content: q.question_text,
-                questionType: q.question_type,
-                typeConfig: {},
-                weight: q.points || 1,
-                answer: studentAnswer ? {
-                  id: studentAnswer.id,
-                  selectedOptionId: studentAnswer.selected_option_id,
-                  answerText: studentAnswer.answer_text,
-                  answerNumeric: null,
-                  score: studentAnswer.score,
-                  feedback: studentAnswer.feedback,
-                } : null,
-              }
-            })
-
-          // Get existing grade
-          const grade = MOCK_DATA.grades.find(
-            (g) => g.assignment_id === assignmentId
-          )
-          const existingGrade: Grade | null = grade ? {
-            id: grade.id,
-            assignmentId: grade.assignment_id,
-            averageScore: grade.average_score,
-            finalGrade: grade.final_grade,
-            roundingMethod: grade.rounding_method,
-            gradedAt: grade.graded_at,
-            gradedBy: grade.graded_by,
-          } : null
-
-          // Get exam events
-          const examEvents = MOCK_DATA.examEvents?.filter(
-            (e) => e.assignment_id === assignmentId
-          ) || []
-
-          setGradingData({
-            assignment,
-            student: assignment.student,
-            exam: assignment.exam,
-            questions,
-            existingGrade,
-            examEvents,
-          })
-        }
-      } else {
-        const data = await apiClient.get<GradingDataResponse>(
-          API_CONFIG.ENDPOINTS.ASSIGNMENT_GRADING(assignmentId)
-        )
-        setGradingData(data)
-      }
+      const res = await authFetch(`/api/assignments/${assignmentId}/grading`)
+      const data: GradingDataResponse = await res.json()
+      setGradingData(data)
     } catch (error) {
       console.error("Error loading grading data:", error)
     } finally {

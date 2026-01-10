@@ -1,9 +1,9 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import type {
   Subject,
   BankQuestion,
@@ -52,8 +52,6 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { ImportDialog } from "@/components/import-dialog"
 import type { ExamExport, QuestionBankExport } from "@/lib/export-import"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Opción Múltiple",
@@ -175,25 +173,24 @@ export default function CreateExamPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setSubjects(MOCK_DATA.subjects)
-        setBankQuestions(MOCK_DATA.bankQuestions.map(transformQuestion))
-        setTopics(MOCK_DATA.topics.map(transformTopic))
-      } else {
-        // Load subjects, questions, and topics from API
-        const [subjectsData, questionsData, topicsData] = await Promise.all([
-          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
-          apiClient.get<BankQuestion[]>(API_CONFIG.ENDPOINTS.QUESTIONS),
-          apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
-        ])
-        setSubjects(subjectsData)
-        setBankQuestions(questionsData)
-        setTopics(topicsData)
-      }
+      const [subjectsRes, questionsRes, topicsRes] = await Promise.all([
+        authFetch("/api/subjects"),
+        authFetch("/api/questions"),
+        authFetch("/api/topics"),
+      ])
+      const [subjectsData, questionsData, topicsData] = await Promise.all([
+        subjectsRes.json(),
+        questionsRes.json(),
+        topicsRes.json(),
+      ])
+      setSubjects(Array.isArray(subjectsData) ? subjectsData : [])
+      setBankQuestions(Array.isArray(questionsData) ? questionsData.map(transformQuestion) : [])
+      setTopics(Array.isArray(topicsData) ? topicsData.map(transformTopic) : [])
 
       // Cargar configuración por defecto de exámenes desde el backend
       try {
-        const config = await apiClient.get<ExamDefaultConfig>(API_CONFIG.ENDPOINTS.EXAM_DEFAULT_CONFIG)
+        const configRes = await authFetch("/api/config/exam-defaults")
+        const config: ExamDefaultConfig = await configRes.json()
         setShuffleQuestions(config.shuffleQuestions)
         setShuffleOptions(config.shuffleOptions)
         setShowResultsImmediately(config.showResultsImmediately)
@@ -322,30 +319,14 @@ export default function CreateExamPage() {
         })),
       }
 
-      if (USE_MOCK_DATA) {
-        const newExam = {
-          id: crypto.randomUUID(),
-          teacherId: user!.id,
-          subjectId: subjectId || null,
-          title,
-          description,
-          durationMinutes: durationMinutes ? Number(durationMinutes) : null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          config: examData.config,
-        }
-        MOCK_DATA.exams.push(newExam as any)
-        toast.success("Examen creado exitosamente")
-        router.push(`/dashboard/exams/${newExam.id}`)
-      } else {
-        // Call backend directly using apiClient (handles auth automatically)
-        const data = await apiClient.post<{ exam: { id: string } }>(
-          API_CONFIG.ENDPOINTS.EXAMS_CREATE,
-          examData
-        )
-        toast.success("Examen creado exitosamente")
-        router.push(`/dashboard/exams/${data.exam.id}`)
-      }
+      const res = await authFetch("/api/exams/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(examData),
+      })
+      const data = await res.json()
+      toast.success("Examen creado exitosamente")
+      router.push(`/dashboard/exams/${data.exam.id}`)
     } catch (error) {
       console.error("Error creating exam:", error)
       toast.error("Error al crear el examen")

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { authFetch } from "@/lib/api-client"
 import type { Student } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -39,7 +40,7 @@ export function StudentsTable({ students }: StudentsTableProps) {
     setIsDeleting(true)
 
     try {
-      const response = await fetch(`/api/students/${deleteId}`, {
+      const response = await authFetch(`/api/students/${deleteId}`, {
         method: "DELETE",
       })
 

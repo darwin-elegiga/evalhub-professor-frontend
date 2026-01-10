@@ -1,18 +1,17 @@
-"use client"
+"use client";
 
-import { useAuth } from "@/lib/auth-context"
-import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { useHeaderActions } from "@/lib/header-actions-context"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
+import { useAuth } from "@/lib/auth-context";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useHeaderActions } from "@/lib/header-actions-context";
+import { apiClient } from "@/lib/api-client";
+import { API_CONFIG } from "@/lib/api-config";
 import type {
   BankQuestion,
   Subject,
   QuestionType,
   QuestionDifficulty,
-} from "@/lib/types"
+} from "@/lib/types";
 import {
   Plus,
   Search,
@@ -24,29 +23,24 @@ import {
   Upload,
   AlertCircle,
   Loader2,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,11 +50,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import Link from "next/link"
-import { downloadQuestions } from "@/lib/export-import"
-import { ImportDialog } from "@/components/import-dialog"
-import type { QuestionBankExport, ExamExport } from "@/lib/export-import"
+} from "@/components/ui/alert-dialog";
+import Link from "next/link";
+import { downloadQuestions } from "@/lib/export-import";
+import { ImportDialog } from "@/components/import-dialog";
+import type { QuestionBankExport, ExamExport } from "@/lib/export-import";
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Opción Múltiple",
@@ -68,19 +62,19 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   graph_click: "Click en Gráfico",
   image_hotspot: "Zona en Imagen",
   open_text: "Respuesta Abierta",
-}
+};
 
 const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
   easy: "Fácil",
   medium: "Medio",
   hard: "Difícil",
-}
+};
 
 const DIFFICULTY_COLORS: Record<QuestionDifficulty, string> = {
   easy: "bg-green-100 text-green-800",
   medium: "bg-yellow-100 text-yellow-800",
   hard: "bg-red-100 text-red-800",
-}
+};
 
 const SUBJECT_COLORS: Record<string, string> = {
   blue: "bg-blue-100 text-blue-800",
@@ -93,112 +87,113 @@ const SUBJECT_COLORS: Record<string, string> = {
   yellow: "bg-yellow-100 text-yellow-800",
   indigo: "bg-indigo-100 text-indigo-800",
   teal: "bg-teal-100 text-teal-800",
-}
+};
 
 export default function QuestionBankPage() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const { setActions, clearActions } = useHeaderActions()
-  const [questions, setQuestions] = useState<BankQuestion[]>([])
-  const [subjects, setSubjects] = useState<Subject[]>([])
-  const [loadingData, setLoadingData] = useState(true)
-  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const { user } = useAuth();
+  const router = useRouter();
+  const { setActions, clearActions } = useHeaderActions();
+  const [questions, setQuestions] = useState<BankQuestion[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Filters
-  const [search, setSearch] = useState("")
-  const [subjectFilter, setSubjectFilter] = useState<string>("all")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [difficultyFilter, setDifficultyFilter] = useState<string>("all")
+  const [search, setSearch] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
 
   // Delete confirmation
-  const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Header actions
-  const openImportDialog = useCallback(() => setImportDialogOpen(true), [])
+  const openImportDialog = useCallback(() => setImportDialogOpen(true), []);
 
   useEffect(() => {
     setActions([
-      { label: "Nueva Pregunta", onClick: () => window.location.href = "/dashboard/questions/create" },
-    ])
-    return () => clearActions()
-  }, [setActions, clearActions])
+      {
+        label: "Nueva Pregunta",
+        onClick: () => (window.location.href = "/dashboard/questions/create"),
+      },
+    ]);
+    return () => clearActions();
+  }, [setActions, clearActions]);
 
   useEffect(() => {
     if (user) {
-      loadData()
+      loadData();
     }
-  }, [user])
+  }, [user]);
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setQuestions(MOCK_DATA.bankQuestions)
-        setSubjects([
-          { id: "1", name: "Física", description: null, color: "blue", createdAt: "", updatedAt: "" },
-          { id: "2", name: "Matemáticas", description: null, color: "green", createdAt: "", updatedAt: "" },
-        ])
-      } else {
-        // Build query params for filters
-        const params = new URLSearchParams()
-        if (subjectFilter !== "all") params.append("subjectId", subjectFilter)
-        if (typeFilter !== "all") params.append("type", typeFilter)
-        if (difficultyFilter !== "all") params.append("difficulty", difficultyFilter)
+      const params = new URLSearchParams();
+      if (subjectFilter !== "all") params.append("subjectId", subjectFilter);
+      if (typeFilter !== "all") params.append("type", typeFilter);
+      if (difficultyFilter !== "all")
+        params.append("difficulty", difficultyFilter);
 
-        const queryString = params.toString()
-        const questionsEndpoint = queryString
-          ? `${API_CONFIG.ENDPOINTS.QUESTIONS}?${queryString}`
-          : API_CONFIG.ENDPOINTS.QUESTIONS
+      const queryString = params.toString();
+      const questionsEndpoint = queryString
+        ? `${API_CONFIG.ENDPOINTS.QUESTIONS}?${queryString}`
+        : API_CONFIG.ENDPOINTS.QUESTIONS;
 
-        const [questionsData, subjectsData] = await Promise.all([
-          apiClient.get<BankQuestion[]>(questionsEndpoint),
-          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
-        ])
-        setQuestions(questionsData)
-        setSubjects(subjectsData)
-      }
+      const [questionsData, subjectsData] = await Promise.all([
+        apiClient.get<BankQuestion[]>(questionsEndpoint),
+        apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
+      ]);
+      setQuestions(questionsData);
+      setSubjects(subjectsData);
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("Error loading data:", error);
     } finally {
-      setLoadingData(false)
+      setLoadingData(false);
     }
-  }
+  };
 
   // Reload when filters change (for API filtering)
   useEffect(() => {
-    if (!USE_MOCK_DATA && user && !loadingData) {
-      loadData()
+    if (user && !loadingData) {
+      loadData();
     }
-  }, [subjectFilter, typeFilter, difficultyFilter])
+  }, [subjectFilter, typeFilter, difficultyFilter]);
 
   const getSubjectById = (id: string | null) => {
-    if (!id) return null
-    return subjects.find((s) => s.id === id)
-  }
+    if (!id) return null;
+    return subjects.find((s) => s.id === id);
+  };
 
   const handleExportAll = () => {
-    if (questions.length === 0) return
-    downloadQuestions(questions, [])
-  }
+    if (questions.length === 0) return;
+    downloadQuestions(questions, []);
+  };
 
   const handleExportFiltered = () => {
-    if (filteredQuestions.length === 0) return
-    downloadQuestions(filteredQuestions, [], `preguntas-filtradas-${new Date().toISOString().split("T")[0]}`)
-  }
+    if (filteredQuestions.length === 0) return;
+    downloadQuestions(
+      filteredQuestions,
+      [],
+      `preguntas-filtradas-${new Date().toISOString().split("T")[0]}`
+    );
+  };
 
   const handleImport = async (data: QuestionBankExport | ExamExport) => {
-    if (data.type !== "question_bank") return
+    if (data.type !== "question_bank") return;
 
-    const importData = data as QuestionBankExport
-    console.log("Importing questions:", importData.questions.length)
+    const importData = data as QuestionBankExport;
+    console.log("Importing questions:", importData.questions.length);
 
     // In real implementation, this would call the API to save the questions
     // For now, we'll just show a success message
-    alert(`Se importaron ${importData.questions.length} preguntas correctamente`)
+    alert(
+      `Se importaron ${importData.questions.length} preguntas correctamente`
+    );
 
     // Reload data
-    loadData()
-  }
+    loadData();
+  };
 
   const handleDuplicate = async (question: BankQuestion) => {
     try {
@@ -213,67 +208,43 @@ export default function QuestionBankPage() {
         weight: question.weight,
         subjectId: question.subjectId,
         topicId: null,
-      }
-
-      if (USE_MOCK_DATA) {
-        const newQuestion: BankQuestion = {
-          ...question,
-          id: crypto.randomUUID(),
-          title: duplicatePayload.title,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-        setQuestions((prev) => [...prev, newQuestion])
-      } else {
-        const newQuestion = await apiClient.post<BankQuestion>(
-          API_CONFIG.ENDPOINTS.QUESTIONS,
-          duplicatePayload
-        )
-        setQuestions((prev) => [...prev, newQuestion])
-      }
+      };
+      const newQuestion = await apiClient.post<BankQuestion>(
+        API_CONFIG.ENDPOINTS.QUESTIONS,
+        duplicatePayload
+      );
+      setQuestions((prev) => [...prev, newQuestion]);
     } catch (error) {
-      console.error("Error duplicating question:", error)
+      console.error("Error duplicating question:", error);
     }
-  }
+  };
 
   const handleDelete = async () => {
-    if (!deleteQuestionId) return
-    setIsDeleting(true)
+    if (!deleteQuestionId) return;
+    setIsDeleting(true);
 
     try {
-      if (USE_MOCK_DATA) {
-        setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionId))
-      } else {
-        await apiClient.delete(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(deleteQuestionId))
-        setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionId))
-      }
-      setDeleteQuestionId(null)
+      await apiClient.delete(
+        API_CONFIG.ENDPOINTS.QUESTION_BY_ID(deleteQuestionId)
+      );
+      setQuestions((prev) => prev.filter((q) => q.id !== deleteQuestionId));
+      setDeleteQuestionId(null);
     } catch (error) {
-      console.error("Error deleting question:", error)
+      console.error("Error deleting question:", error);
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   // Client-side filtering (for mock data or additional search)
   const filteredQuestions = questions.filter((q) => {
     const matchesSearch =
       q.title.toLowerCase().includes(search.toLowerCase()) ||
-      q.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()))
+      q.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()));
 
     // If using API, filters are already applied server-side
-    if (!USE_MOCK_DATA) {
-      return matchesSearch
-    }
-
-    // For mock data, apply all filters client-side
-    const matchesSubject = subjectFilter === "all" || q.subjectId === subjectFilter
-    const matchesType = typeFilter === "all" || q.questionType === typeFilter
-    const matchesDifficulty =
-      difficultyFilter === "all" || q.difficulty === difficultyFilter
-
-    return matchesSearch && matchesSubject && matchesType && matchesDifficulty
-  })
+    return matchesSearch;
+  });
 
   if (loadingData) {
     return (
@@ -283,7 +254,7 @@ export default function QuestionBankPage() {
           <p className="text-sm text-muted-foreground">Cargando preguntas...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -294,17 +265,17 @@ export default function QuestionBankPage() {
             {questions.length} preguntas en tu banco
           </p>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openImportDialog}
-            >
+            <Button variant="outline" size="sm" onClick={openImportDialog}>
               <Upload className="mr-2 h-4 w-4" />
               Importar
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={questions.length === 0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={questions.length === 0}
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Exportar
                 </Button>
@@ -323,137 +294,142 @@ export default function QuestionBankPage() {
           </div>
         </div>
 
-          <Card className="border-gray-200 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex flex-col gap-4 md:flex-row">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por título o tags..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Asignatura" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las asignaturas</SelectItem>
-                    {subjects.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los tipos</SelectItem>
-                    {Object.entries(QUESTION_TYPE_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={difficultyFilter}
-                  onValueChange={setDifficultyFilter}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Dificultad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {Object.entries(DIFFICULTY_LABELS).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <Card className="border-gray-200 shadow-sm">
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4 md:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por título o tags..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
               </div>
+
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Asignatura" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las asignaturas</SelectItem>
+                  {subjects.map((subject) => (
+                    <SelectItem key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  {Object.entries(QUESTION_TYPE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={difficultyFilter}
+                onValueChange={setDifficultyFilter}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Dificultad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {Object.entries(DIFFICULTY_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {filteredQuestions.length === 0 ? (
+          <Card className="border-gray-200">
+            <CardContent className="flex h-64 flex-col items-center justify-center">
+              <p className="mb-4 text-muted-foreground">
+                {questions.length === 0
+                  ? "No tienes preguntas en tu banco"
+                  : "No se encontraron preguntas con esos filtros"}
+              </p>
+              {questions.length === 0 && (
+                <Button asChild>
+                  <Link href="/dashboard/questions/create">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crear tu primera pregunta
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
+        ) : (
+          <div className="grid gap-4">
+            {filteredQuestions.map((question) => {
+              const subject = getSubjectById(question.subjectId);
 
-          {filteredQuestions.length === 0 ? (
-            <Card className="border-gray-200">
-              <CardContent className="flex h-64 flex-col items-center justify-center">
-                <p className="mb-4 text-muted-foreground">
-                  {questions.length === 0
-                    ? "No tienes preguntas en tu banco"
-                    : "No se encontraron preguntas con esos filtros"}
-                </p>
-                {questions.length === 0 && (
-                  <Button asChild>
-                    <Link href="/dashboard/questions/create">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Crear tu primera pregunta
-                    </Link>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {filteredQuestions.map((question) => {
-                const subject = getSubjectById(question.subjectId)
-
-                return (
-                  <Card
-                    key={question.id}
-                    className="border-gray-200 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
-                    onClick={() => router.push(`/dashboard/questions/${question.id}`)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">
-                            {question.title}
-                          </CardTitle>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {subject && (
-                              <Badge
-                                variant="secondary"
-                                className={SUBJECT_COLORS[subject.color] || "bg-gray-100 text-gray-800"}
-                              >
-                                {subject.name}
-                              </Badge>
-                            )}
-                            <Badge variant="outline">
-                              {QUESTION_TYPE_LABELS[question.questionType]}
-                            </Badge>
+              return (
+                <Card
+                  key={question.id}
+                  className="border-gray-200 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
+                  onClick={() =>
+                    router.push(`/dashboard/questions/${question.id}`)
+                  }
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">
+                          {question.title}
+                        </CardTitle>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {subject && (
                             <Badge
                               variant="secondary"
-                              className={DIFFICULTY_COLORS[question.difficulty]}
+                              className={
+                                SUBJECT_COLORS[subject.color] ||
+                                "bg-gray-100 text-gray-800"
+                              }
                             >
-                              {DIFFICULTY_LABELS[question.difficulty]}
+                              {subject.name}
                             </Badge>
-                            <Badge variant="secondary" title="Peso relativo">
-                              ×{question.weight}
+                          )}
+                          <Badge variant="outline">
+                            {QUESTION_TYPE_LABELS[question.questionType]}
+                          </Badge>
+                          <Badge
+                            variant="secondary"
+                            className={DIFFICULTY_COLORS[question.difficulty]}
+                          >
+                            {DIFFICULTY_LABELS[question.difficulty]}
+                          </Badge>
+                          <Badge variant="secondary" title="Peso relativo">
+                            ×{question.weight}
+                          </Badge>
+                          {question.estimatedTimeMinutes && (
+                            <Badge variant="secondary">
+                              ~{question.estimatedTimeMinutes} min
                             </Badge>
-                            {question.estimatedTimeMinutes && (
-                              <Badge variant="secondary">
-                                ~{question.estimatedTimeMinutes} min
-                              </Badge>
-                            )}
-                          </div>
+                          )}
                         </div>
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
                               <Link
@@ -463,7 +439,9 @@ export default function QuestionBankPage() {
                                 Editar
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicate(question)}>
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicate(question)}
+                            >
                               <Copy className="mr-2 h-4 w-4" />
                               Duplicar
                             </DropdownMenuItem>
@@ -475,50 +453,49 @@ export default function QuestionBankPage() {
                               Eliminar
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        </DropdownMenu>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div
-                        className="prose prose-sm max-w-none line-clamp-2 text-muted-foreground"
-                        dangerouslySetInnerHTML={{
-                          __html:
-                            question.content.replace(/<[^>]*>/g, " ").slice(0, 200) +
-                            "...",
-                        }}
-                      />
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {question.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            #{tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      {(question.timesUsed !== undefined ||
-                        question.averageScore !== undefined) && (
-                        <div className="mt-3 flex gap-4 text-sm text-muted-foreground">
-                          {question.timesUsed !== undefined && (
-                            <span>Usado {question.timesUsed} veces</span>
-                          )}
-                          {question.averageScore !== undefined && question.averageScore !== null && (
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      className="prose prose-sm max-w-none line-clamp-2 text-muted-foreground"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          question.content
+                            .replace(/<[^>]*>/g, " ")
+                            .slice(0, 200) + "...",
+                      }}
+                    />
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {question.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          #{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    {(question.timesUsed !== undefined ||
+                      question.averageScore !== undefined) && (
+                      <div className="mt-3 flex gap-4 text-sm text-muted-foreground">
+                        {question.timesUsed !== undefined && (
+                          <span>Usado {question.timesUsed} veces</span>
+                        )}
+                        {question.averageScore !== undefined &&
+                          question.averageScore !== null && (
                             <span>
-                              Promedio: {(question.averageScore * 100).toFixed(0)}%
+                              Promedio:{" "}
+                              {(question.averageScore * 100).toFixed(0)}%
                             </span>
                           )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Import Dialog */}
       <ImportDialog
@@ -561,5 +538,5 @@ export default function QuestionBankPage() {
         </AlertDialogContent>
       </AlertDialog>
     </main>
-  )
+  );
 }

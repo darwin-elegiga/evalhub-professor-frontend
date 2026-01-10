@@ -1,19 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
-import type { QuestionTopic } from "@/lib/types"
-
-// Helper to transform mock data (snake_case) to API format (camelCase)
-const transformTopic = (t: any): QuestionTopic => ({
-  id: t.id,
-  teacherId: t.teacherId || t.teacher_id,
-  subjectId: t.subjectId || t.subject_id,
-  name: t.name,
-  description: t.description,
-  color: t.color,
-  createdAt: t.createdAt || t.created_at,
-})
+import { NextRequest, NextResponse } from "next/server";
+import { serverFetch } from "@/lib/api-client";
+import { API_CONFIG } from "@/lib/api-config";
+import type { QuestionTopic } from "@/lib/types";
 
 // GET /api/topics/[id] - Get topic by ID
 export async function GET(
@@ -21,21 +9,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-
-    if (USE_MOCK_DATA) {
-      const topic = MOCK_DATA.topics.find((t) => t.id === id)
-      if (!topic) {
-        return NextResponse.json({ error: "Topic not found" }, { status: 404 })
-      }
-      return NextResponse.json(transformTopic(topic))
-    } else {
-      const response = await apiClient.get<QuestionTopic>(API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id))
-      return NextResponse.json(response)
-    }
+    const token = request.headers.get("authorization")?.replace("Bearer ", "");
+    const { id } = await params;
+    const response = await serverFetch<QuestionTopic>(
+      API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id),
+      { method: "GET", token }
+    );
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Error fetching topic:", error)
-    return NextResponse.json({ error: "Error fetching topic" }, { status: 500 })
+    console.error("Error fetching topic:", error);
+    return NextResponse.json(
+      { error: "Error fetching topic" },
+      { status: 500 }
+    );
   }
 }
 
@@ -46,31 +32,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-    const body = await request.json()
-
-    if (USE_MOCK_DATA) {
-      const index = MOCK_DATA.topics.findIndex((t) => t.id === id)
-      if (index === -1) {
-        return NextResponse.json({ error: "Topic not found" }, { status: 404 })
-      }
-
-      const existing = MOCK_DATA.topics[index]
-      const updatedTopic = {
-        ...existing,
-        ...body,
-        id,
-      }
-
-      MOCK_DATA.topics[index] = updatedTopic as any
-      return NextResponse.json(transformTopic(updatedTopic))
-    } else {
-      const response = await apiClient.put<QuestionTopic>(API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id), body)
-      return NextResponse.json(response)
-    }
+    const token = request.headers.get("authorization")?.replace("Bearer ", "");
+    const { id } = await params;
+    const body = await request.json();
+    const response = await serverFetch<QuestionTopic>(
+      API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id),
+      { method: "PUT", body: JSON.stringify(body), token }
+    );
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Error updating topic:", error)
-    return NextResponse.json({ error: "Error updating topic" }, { status: 500 })
+    console.error("Error updating topic:", error);
+    return NextResponse.json(
+      { error: "Error updating topic" },
+      { status: 500 }
+    );
   }
 }
 
@@ -80,22 +55,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
-
-    if (USE_MOCK_DATA) {
-      const index = MOCK_DATA.topics.findIndex((t) => t.id === id)
-      if (index === -1) {
-        return NextResponse.json({ error: "Topic not found" }, { status: 404 })
-      }
-
-      MOCK_DATA.topics.splice(index, 1)
-      return NextResponse.json({ success: true })
-    } else {
-      await apiClient.delete(API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id))
-      return NextResponse.json({ success: true })
-    }
+    const token = request.headers.get("authorization")?.replace("Bearer ", "");
+    const { id } = await params;
+    await serverFetch(
+      API_CONFIG.ENDPOINTS.TOPIC_BY_ID(id),
+      { method: "DELETE", token }
+    );
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting topic:", error)
-    return NextResponse.json({ error: "Error deleting topic" }, { status: 500 })
+    console.error("Error deleting topic:", error);
+    return NextResponse.json(
+      { error: "Error deleting topic" },
+      { status: 500 }
+    );
   }
 }

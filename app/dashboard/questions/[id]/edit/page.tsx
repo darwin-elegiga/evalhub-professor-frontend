@@ -1,14 +1,12 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import type {
   Subject,
   QuestionTopic,
@@ -186,43 +184,19 @@ export default function EditQuestionPage() {
       let subjectsData: Subject[] = []
       let topicsData: QuestionTopic[] = []
 
-      if (USE_MOCK_DATA) {
-        subjectsData = MOCK_DATA.subjects
-        topicsData = MOCK_DATA.topics.map((t: any) => ({
-          id: t.id,
-          teacherId: t.teacherId || t.teacher_id,
-          subjectId: t.subjectId || t.subject_id,
-          name: t.name,
-          description: t.description,
-          color: t.color,
-          createdAt: t.createdAt || t.created_at,
-        }))
-        questionData = MOCK_DATA.bankQuestions.find((q) => q.id === questionId) || null
-      } else {
-        try {
-          const [qData, sData, tData] = await Promise.all([
-            apiClient.get<BankQuestion>(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(questionId)),
-            apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
-            apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS),
-          ])
-          questionData = qData
-          subjectsData = sData
-          topicsData = tData
-        } catch (apiError) {
-          console.warn("Error loading from API, using mock data as fallback:", apiError)
-          subjectsData = MOCK_DATA.subjects
-          topicsData = MOCK_DATA.topics.map((t: any) => ({
-            id: t.id,
-            teacherId: t.teacherId || t.teacher_id,
-            subjectId: t.subjectId || t.subject_id,
-            name: t.name,
-            description: t.description,
-            color: t.color,
-            createdAt: t.createdAt || t.created_at,
-          }))
-          questionData = MOCK_DATA.bankQuestions.find((q) => q.id === questionId) || null
-        }
-      }
+      const [qRes, sRes, tRes] = await Promise.all([
+        authFetch(`/api/questions/${questionId}`),
+        authFetch("/api/subjects"),
+        authFetch("/api/topics"),
+      ])
+      const [qData, sData, tData] = await Promise.all([
+        qRes.json(),
+        sRes.json(),
+        tRes.json(),
+      ])
+      questionData = qData
+      subjectsData = Array.isArray(sData) ? sData : []
+      topicsData = Array.isArray(tData) ? tData : []
 
       setSubjects(subjectsData)
       setTopics(topicsData)
@@ -410,23 +384,13 @@ export default function EditQuestionPage() {
         typeConfig,
       }
 
-      if (USE_MOCK_DATA) {
-        // Update mock data
-        const index = MOCK_DATA.bankQuestions.findIndex((q) => q.id === questionId)
-        if (index !== -1) {
-          MOCK_DATA.bankQuestions[index] = {
-            ...MOCK_DATA.bankQuestions[index],
-            ...questionData,
-            updatedAt: new Date().toISOString(),
-          } as any
-        }
-        toast.success("Pregunta actualizada exitosamente")
-        router.push("/dashboard/questions")
-      } else {
-        await apiClient.put(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(questionId), questionData)
-        toast.success("Pregunta actualizada exitosamente")
-        router.push("/dashboard/questions")
-      }
+      await authFetch(`/api/questions/${questionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(questionData),
+      })
+      toast.success("Pregunta actualizada exitosamente")
+      router.push("/dashboard/questions")
     } catch (error) {
       console.error("Error updating question:", error)
       toast.error("Error al actualizar la pregunta")

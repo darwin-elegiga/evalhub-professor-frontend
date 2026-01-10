@@ -1,11 +1,9 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import type { Exam, BankQuestion, Subject, ExamConfig, QuestionType, QuestionDifficulty } from "@/lib/types"
 import { ArrowLeft, Send, Download, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -73,48 +71,20 @@ export default function ExamDetailsPage() {
 
   const loadExam = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        const foundExam = MOCK_DATA.exams.find((e) => e.id === examId)
-        if (foundExam) {
-          // Transform mock questions to match API response format
-          const examQuestions: ExamQuestion[] = MOCK_DATA.questions
-            .filter((q: any) => q.exam_id === examId)
-            .map((q: any, index: number) => {
-              const bankQuestion = MOCK_DATA.bankQuestions.find((bq: any) => bq.id === q.question_id)
-              return {
-                id: q.id,
-                examId: examId,
-                questionId: q.question_id || q.id,
-                questionOrder: index + 1,
-                weight: q.points || 1,
-                question: bankQuestion || q,
-              }
-            })
-          setExam({ ...foundExam, questions: examQuestions } as ExamWithDetails)
+      const examRes = await authFetch(`/api/exams/${examId}`)
+      const examData: ExamWithDetails = await examRes.json()
+      setExam(examData)
 
-          if (foundExam.subjectId) {
-            const foundSubject = MOCK_DATA.subjects.find(
-              (s) => s.id === foundExam.subjectId
-            )
-            setSubject(foundSubject || null)
-          }
-        }
-      } else {
-        // Fetch exam details from backend
-        const examData = await apiClient.get<ExamWithDetails>(
-          API_CONFIG.ENDPOINTS.EXAM_BY_ID(examId)
-        )
-        setExam(examData)
-
-        // Fetch subject if exam has one
-        if (examData.subjectId) {
-          try {
-            const subjectsData = await apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS)
-            const foundSubject = subjectsData.find((s) => s.id === examData.subjectId)
-            setSubject(foundSubject || null)
-          } catch {
-            // Subject fetch failed, continue without it
-          }
+      if (examData.subjectId) {
+        try {
+          const subjectsRes = await authFetch("/api/subjects")
+          const subjectsData: Subject[] = await subjectsRes.json()
+          const foundSubject = Array.isArray(subjectsData)
+            ? subjectsData.find((s) => s.id === examData.subjectId)
+            : null
+          setSubject(foundSubject || null)
+        } catch {
+          // Subject fetch failed, continue without it
         }
       }
     } catch (error) {

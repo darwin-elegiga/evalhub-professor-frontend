@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { authFetch } from "@/lib/api-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,7 +34,7 @@ export function StudentForm({ teacherId, student }: StudentFormProps) {
       const url = student ? `/api/students/${student.id}` : "/api/students/create"
       const method = student ? "PUT" : "POST"
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

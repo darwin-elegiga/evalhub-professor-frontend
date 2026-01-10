@@ -1,11 +1,9 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import type { Exam, StudentGroup } from "@/lib/types"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -36,18 +34,16 @@ export default function AssignExamPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        const foundExam = MOCK_DATA.exams.find((e) => e.id === examId)
-        setExam(foundExam || null)
-        setGroups(MOCK_DATA.studentGroups)
-      } else {
-        const [examData, groupsData] = await Promise.all([
-          apiClient.get<Exam>(`${API_CONFIG.ENDPOINTS.EXAMS}/${examId}`),
-          apiClient.get<StudentGroup[]>(API_CONFIG.ENDPOINTS.GROUPS),
-        ])
-        setExam(examData)
-        setGroups(groupsData)
-      }
+      const [examRes, groupsRes] = await Promise.all([
+        authFetch(`/api/exams/${examId}`),
+        authFetch("/api/groups"),
+      ])
+      const [examData, groupsData] = await Promise.all([
+        examRes.json(),
+        groupsRes.json(),
+      ])
+      setExam(examData)
+      setGroups(Array.isArray(groupsData) ? groupsData : [])
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {

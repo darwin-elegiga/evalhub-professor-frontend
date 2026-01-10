@@ -1,11 +1,9 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { USE_MOCK_DATA, MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import type { Subject, QuestionTopic, BankQuestion, QuestionType, QuestionDifficulty } from "@/lib/types"
 import { ArrowLeft, Edit, Clock, Scale, CheckCircle2, XCircle, Info } from "lucide-react"
 import { GraphViewer, type GraphConfig } from "@/components/graph-editor"
@@ -76,57 +74,22 @@ export default function QuestionDetailPage() {
       let subjectData: Subject | null = null
       let topicData: QuestionTopic | null = null
 
-      if (USE_MOCK_DATA) {
-        questionData = MOCK_DATA.bankQuestions.find((q) => q.id === questionId) || null
-        if (questionData?.subjectId) {
-          subjectData = MOCK_DATA.subjects.find((s) => s.id === questionData?.subjectId) || null
-        }
-        if (questionData?.topicId) {
-          const mockTopic = MOCK_DATA.topics.find((t) => t.id === questionData?.topicId)
-          if (mockTopic) {
-            topicData = {
-              id: mockTopic.id,
-              teacherId: (mockTopic as any).teacherId || (mockTopic as any).teacher_id,
-              subjectId: (mockTopic as any).subjectId || (mockTopic as any).subject_id,
-              name: mockTopic.name,
-              description: mockTopic.description,
-              color: mockTopic.color,
-              createdAt: (mockTopic as any).createdAt || (mockTopic as any).created_at,
-            }
-          }
-        }
-      } else {
-        try {
-          questionData = await apiClient.get<BankQuestion>(API_CONFIG.ENDPOINTS.QUESTION_BY_ID(questionId))
-          if (questionData?.subjectId) {
-            const subjects = await apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS)
-            subjectData = subjects.find((s) => s.id === questionData?.subjectId) || null
-          }
-          if (questionData?.topicId) {
-            const topics = await apiClient.get<QuestionTopic[]>(API_CONFIG.ENDPOINTS.TOPICS)
-            topicData = topics.find((t) => t.id === questionData?.topicId) || null
-          }
-        } catch (apiError) {
-          console.warn("Error loading from API, using mock data as fallback:", apiError)
-          questionData = MOCK_DATA.bankQuestions.find((q) => q.id === questionId) || null
-          if (questionData?.subjectId) {
-            subjectData = MOCK_DATA.subjects.find((s) => s.id === questionData?.subjectId) || null
-          }
-          if (questionData?.topicId) {
-            const mockTopic = MOCK_DATA.topics.find((t) => t.id === questionData?.topicId)
-            if (mockTopic) {
-              topicData = {
-                id: mockTopic.id,
-                teacherId: (mockTopic as any).teacherId || (mockTopic as any).teacher_id,
-                subjectId: (mockTopic as any).subjectId || (mockTopic as any).subject_id,
-                name: mockTopic.name,
-                description: mockTopic.description,
-                color: mockTopic.color,
-                createdAt: (mockTopic as any).createdAt || (mockTopic as any).created_at,
-              }
-            }
-          }
-        }
+      const qRes = await authFetch(`/api/questions/${questionId}`)
+      questionData = await qRes.json()
+
+      if (questionData?.subjectId) {
+        const subjectsRes = await authFetch("/api/subjects")
+        const subjects: Subject[] = await subjectsRes.json()
+        subjectData = Array.isArray(subjects)
+          ? subjects.find((s) => s.id === questionData?.subjectId) || null
+          : null
+      }
+      if (questionData?.topicId) {
+        const topicsRes = await authFetch("/api/topics")
+        const topics: QuestionTopic[] = await topicsRes.json()
+        topicData = Array.isArray(topics)
+          ? topics.find((t) => t.id === questionData?.topicId) || null
+          : null
       }
 
       setQuestion(questionData)

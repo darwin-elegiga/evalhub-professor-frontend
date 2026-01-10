@@ -1,9 +1,9 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import type {
   Exam,
   ExamAssignment,
@@ -70,79 +70,63 @@ export default function ExamResultsPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        const examAssignment = MOCK_DATA.examAssignments.find(
-          (ea) => ea.id === params.id
-        )
+      const res = await authFetch(`/api/assignments/${params.id}/results`)
+      if (!res.ok) {
+        router.push("/dashboard/exams")
+        return
+      }
+      const resultsData = await res.json()
 
-        if (!examAssignment) {
-          router.push("/dashboard/exams")
-          return
+      if (resultsData.error) {
+        router.push("/dashboard/exams")
+        return
+      }
+
+      // Sort student assignments by status
+      const sortedAssignments = [...(resultsData.studentAssignments || [])].sort(
+        (a: StudentAssignmentWithDetails, b: StudentAssignmentWithDetails) => {
+          const statusOrder: Record<string, number> = { submitted: 0, graded: 1, in_progress: 2, pending: 3 }
+          return (statusOrder[a.assignment.status] || 3) - (statusOrder[b.assignment.status] || 3)
         }
+      )
 
-        const exam = MOCK_DATA.exams.find((e) => e.id === examAssignment.exam_id)!
-        const group = examAssignment.group_id
-          ? MOCK_DATA.studentGroups.find((g) => g.id === examAssignment.group_id) ||
-            null
+      // Calculate stats from the response
+      const studentAssignments = sortedAssignments as StudentAssignmentWithDetails[]
+      const submitted = studentAssignments.filter(
+        (sa) =>
+          sa.assignment.status === "submitted" ||
+          sa.assignment.status === "graded"
+      ).length
+      const graded = studentAssignments.filter(
+        (sa) => sa.assignment.status === "graded"
+      ).length
+      const pending = studentAssignments.filter(
+        (sa) =>
+          sa.assignment.status === "pending" ||
+          sa.assignment.status === "in_progress"
+      ).length
+
+      const gradesWithScores = studentAssignments
+        .filter((sa) => sa.grade)
+        .map((sa) => sa.grade!.finalGrade)
+      const averageScore =
+        gradesWithScores.length > 0
+          ? gradesWithScores.reduce((a, b) => a + b, 0) / gradesWithScores.length
           : null
 
-        const studentAssignments: StudentAssignmentWithDetails[] =
-          MOCK_DATA.assignments
-            .filter((a) => a.exam_assignment_id === examAssignment.id)
-            .map((assignment) => {
-              const student = MOCK_DATA.students.find(
-                (s) => s.id === assignment.student_id
-              )!
-              const grade =
-                MOCK_DATA.grades.find((g) => g.assignment_id === assignment.id) ||
-                null
-
-              return { assignment, student, grade }
-            })
-            .sort((a, b) => {
-              // Sort by status: submitted first (needs grading), then graded, then pending
-              const statusOrder = { submitted: 0, graded: 1, in_progress: 2, pending: 3 }
-              return (
-                statusOrder[a.assignment.status] - statusOrder[b.assignment.status]
-              )
-            })
-
-        const submitted = studentAssignments.filter(
-          (sa) =>
-            sa.assignment.status === "submitted" ||
-            sa.assignment.status === "graded"
-        ).length
-        const graded = studentAssignments.filter(
-          (sa) => sa.assignment.status === "graded"
-        ).length
-        const pending = studentAssignments.filter(
-          (sa) =>
-            sa.assignment.status === "pending" ||
-            sa.assignment.status === "in_progress"
-        ).length
-
-        const gradesWithScores = studentAssignments
-          .filter((sa) => sa.grade)
-          .map((sa) => sa.grade!.final_grade)
-        const averageScore =
-          gradesWithScores.length > 0
-            ? gradesWithScores.reduce((a, b) => a + b, 0) / gradesWithScores.length
-            : null
-
-        setData({
-          examAssignment,
-          exam,
-          group,
-          studentAssignments,
-          stats: {
-            total: studentAssignments.length,
-            submitted,
-            graded,
-            pending,
-            averageScore,
-          },
-        })
-      }
+      setData({
+        examAssignment: resultsData.examAssignment,
+        exam: resultsData.exam,
+        group: resultsData.group,
+        studentAssignments,
+        stats: {
+          total: studentAssignments.length,
+          submitted,
+          graded,
+          pending,
+          averageScore,
+        },
+      })
     } catch (error) {
       console.error("Error loading exam results:", error)
     } finally {
@@ -321,7 +305,7 @@ export default function ExamResultsPage() {
                   {/* Student Info */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-gray-900">
-                      {student.full_name}
+                      {student.fullName}
                     </div>
                     <div className="text-sm text-gray-500">{student.email}</div>
                   </div>
@@ -331,12 +315,12 @@ export default function ExamResultsPage() {
                     {grade && (
                       <div className="text-right">
                         <div
-                          className={`text-2xl font-bold ${FINAL_GRADE_LABELS[grade.final_grade].color}`}
+                          className={`text-2xl font-bold ${FINAL_GRADE_LABELS[grade.finalGrade].color}`}
                         >
-                          {grade.final_grade}
+                          {grade.finalGrade}
                         </div>
-                        <div className={`text-xs ${FINAL_GRADE_LABELS[grade.final_grade].color}`}>
-                          {FINAL_GRADE_LABELS[grade.final_grade].label}
+                        <div className={`text-xs ${FINAL_GRADE_LABELS[grade.finalGrade].color}`}>
+                          {FINAL_GRADE_LABELS[grade.finalGrade].label}
                         </div>
                       </div>
                     )}

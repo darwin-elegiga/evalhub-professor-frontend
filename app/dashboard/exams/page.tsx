@@ -1,10 +1,8 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState, useMemo } from "react"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
 import type { Exam, Subject } from "@/lib/types"
 import { Plus, ChevronRight, Search, X, Settings, Clock, FileQuestion } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -38,17 +36,16 @@ export default function ExamsPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setExams(MOCK_DATA.exams)
-        setSubjects(MOCK_DATA.subjects)
-      } else {
-        const [examsData, subjectsData] = await Promise.all([
-          apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS),
-          apiClient.get<Subject[]>(API_CONFIG.ENDPOINTS.SUBJECTS),
-        ])
-        setExams(examsData)
-        setSubjects(subjectsData)
-      }
+      const [examsRes, subjectsRes] = await Promise.all([
+        authFetch("/api/exams"),
+        authFetch("/api/subjects"),
+      ])
+      const [examsData, subjectsData] = await Promise.all([
+        examsRes.json(),
+        subjectsRes.json(),
+      ])
+      setExams(Array.isArray(examsData) ? examsData : [])
+      setSubjects(Array.isArray(subjectsData) ? subjectsData : [])
     } catch (error) {
       console.error("Error loading exams:", error)
     } finally {

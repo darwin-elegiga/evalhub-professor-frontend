@@ -1,9 +1,9 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
+import { authFetch } from "@/lib/api-client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
 import type { Subject, QuestionTopic, ExamLevel } from "@/lib/types"
 import { ArrowLeft, Plus, Pencil, Trash2, Save, X, BookOpen, Tag, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -93,16 +93,19 @@ export default function ExamSettingsPage() {
 
   const loadData = async () => {
     try {
-      if (USE_MOCK_DATA) {
-        setSubjects(MOCK_DATA.subjects)
-        setTopics(MOCK_DATA.topics)
-        setLevels(MOCK_DATA.levels)
-      } else {
-        // TODO: Implement real API calls
-        setSubjects([])
-        setTopics([])
-        setLevels([])
-      }
+      const [subjectsRes, topicsRes, levelsRes] = await Promise.all([
+        authFetch("/api/subjects"),
+        authFetch("/api/topics"),
+        authFetch("/api/levels"),
+      ])
+      const [subjectsData, topicsData, levelsData] = await Promise.all([
+        subjectsRes.json(),
+        topicsRes.json(),
+        levelsRes.json(),
+      ])
+      setSubjects(Array.isArray(subjectsData) ? subjectsData : [])
+      setTopics(Array.isArray(topicsData) ? topicsData : [])
+      setLevels(Array.isArray(levelsData) ? levelsData : [])
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -122,43 +125,45 @@ export default function ExamSettingsPage() {
     setSubjectDialogOpen(true)
   }
 
-  const saveSubject = () => {
+  const saveSubject = async () => {
     if (!subjectForm.name.trim()) {
       toast.error("El nombre es requerido")
       return
     }
 
-    if (editingSubject) {
-      // Update
-      const updated: Subject = {
-        ...editingSubject,
-        name: subjectForm.name,
-        description: subjectForm.description || null,
-        color: subjectForm.color,
+    try {
+      if (editingSubject) {
+        const res = await authFetch(`/api/subjects/${editingSubject.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: subjectForm.name,
+            description: subjectForm.description || null,
+            color: subjectForm.color,
+          }),
+        })
+        const updated = await res.json()
+        setSubjects(subjects.map(s => s.id === updated.id ? updated : s))
+        toast.success("Asignatura actualizada")
+      } else {
+        const res = await authFetch("/api/subjects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: subjectForm.name,
+            description: subjectForm.description || null,
+            color: subjectForm.color,
+          }),
+        })
+        const newSubject = await res.json()
+        setSubjects([...subjects, newSubject])
+        toast.success("Asignatura creada")
       }
-      setSubjects(subjects.map(s => s.id === updated.id ? updated : s))
-      if (USE_MOCK_DATA) {
-        const idx = MOCK_DATA.subjects.findIndex(s => s.id === updated.id)
-        if (idx >= 0) MOCK_DATA.subjects[idx] = updated
-      }
-      toast.success("Asignatura actualizada")
-    } else {
-      // Create
-      const newSubject: Subject = {
-        id: crypto.randomUUID(),
-        teacher_id: user!.id,
-        name: subjectForm.name,
-        description: subjectForm.description || null,
-        color: subjectForm.color,
-        created_at: new Date().toISOString(),
-      }
-      setSubjects([...subjects, newSubject])
-      if (USE_MOCK_DATA) {
-        MOCK_DATA.subjects.push(newSubject)
-      }
-      toast.success("Asignatura creada")
+      setSubjectDialogOpen(false)
+    } catch (error) {
+      console.error("Error saving subject:", error)
+      toast.error("Error al guardar asignatura")
     }
-    setSubjectDialogOpen(false)
   }
 
   // Topic handlers
@@ -178,7 +183,7 @@ export default function ExamSettingsPage() {
     setTopicDialogOpen(true)
   }
 
-  const saveTopic = () => {
+  const saveTopic = async () => {
     if (!topicForm.name.trim()) {
       toast.error("El nombre es requerido")
       return
@@ -188,39 +193,41 @@ export default function ExamSettingsPage() {
       return
     }
 
-    if (editingTopic) {
-      // Update
-      const updated: QuestionTopic = {
-        ...editingTopic,
-        name: topicForm.name,
-        description: topicForm.description || null,
-        color: topicForm.color,
-        subjectId: topicForm.subjectId,
+    try {
+      if (editingTopic) {
+        const res = await authFetch(`/api/topics/${editingTopic.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: topicForm.name,
+            description: topicForm.description || null,
+            color: topicForm.color,
+            subjectId: topicForm.subjectId,
+          }),
+        })
+        const updated = await res.json()
+        setTopics(topics.map(t => t.id === updated.id ? updated : t))
+        toast.success("Tema actualizado")
+      } else {
+        const res = await authFetch("/api/topics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: topicForm.name,
+            description: topicForm.description || null,
+            color: topicForm.color,
+            subjectId: topicForm.subjectId,
+          }),
+        })
+        const newTopic = await res.json()
+        setTopics([...topics, newTopic])
+        toast.success("Tema creado")
       }
-      setTopics(topics.map(t => t.id === updated.id ? updated : t))
-      if (USE_MOCK_DATA) {
-        const idx = MOCK_DATA.topics.findIndex(t => t.id === updated.id)
-        if (idx >= 0) MOCK_DATA.topics[idx] = updated as any
-      }
-      toast.success("Tema actualizado")
-    } else {
-      // Create
-      const newTopic: QuestionTopic = {
-        id: crypto.randomUUID(),
-        teacherId: user!.id,
-        subjectId: topicForm.subjectId,
-        name: topicForm.name,
-        description: topicForm.description || null,
-        color: topicForm.color,
-        createdAt: new Date().toISOString(),
-      }
-      setTopics([...topics, newTopic])
-      if (USE_MOCK_DATA) {
-        MOCK_DATA.topics.push(newTopic as any)
-      }
-      toast.success("Tema creado")
+      setTopicDialogOpen(false)
+    } catch (error) {
+      console.error("Error saving topic:", error)
+      toast.error("Error al guardar tema")
     }
-    setTopicDialogOpen(false)
   }
 
   // Level handlers
@@ -235,41 +242,43 @@ export default function ExamSettingsPage() {
     setLevelDialogOpen(true)
   }
 
-  const saveLevel = () => {
+  const saveLevel = async () => {
     if (!levelForm.name.trim()) {
       toast.error("El nombre es requerido")
       return
     }
 
-    if (editingLevel) {
-      // Update
-      const updated: ExamLevel = {
-        ...editingLevel,
-        name: levelForm.name,
-        description: levelForm.description || null,
+    try {
+      if (editingLevel) {
+        const res = await authFetch(`/api/levels/${editingLevel.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: levelForm.name,
+            description: levelForm.description || null,
+          }),
+        })
+        const updated = await res.json()
+        setLevels(levels.map(l => l.id === updated.id ? updated : l))
+        toast.success("Nivel actualizado")
+      } else {
+        const res = await authFetch("/api/levels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: levelForm.name,
+            description: levelForm.description || null,
+          }),
+        })
+        const newLevel = await res.json()
+        setLevels([...levels, newLevel])
+        toast.success("Nivel creado")
       }
-      setLevels(levels.map(l => l.id === updated.id ? updated : l))
-      if (USE_MOCK_DATA) {
-        const idx = MOCK_DATA.levels.findIndex(l => l.id === updated.id)
-        if (idx >= 0) MOCK_DATA.levels[idx] = updated
-      }
-      toast.success("Nivel actualizado")
-    } else {
-      // Create
-      const newLevel: ExamLevel = {
-        id: crypto.randomUUID(),
-        teacher_id: user!.id,
-        name: levelForm.name,
-        description: levelForm.description || null,
-        created_at: new Date().toISOString(),
-      }
-      setLevels([...levels, newLevel])
-      if (USE_MOCK_DATA) {
-        MOCK_DATA.levels.push(newLevel)
-      }
-      toast.success("Nivel creado")
+      setLevelDialogOpen(false)
+    } catch (error) {
+      console.error("Error saving level:", error)
+      toast.error("Error al guardar nivel")
     }
-    setLevelDialogOpen(false)
   }
 
   // Delete handlers
@@ -278,32 +287,28 @@ export default function ExamSettingsPage() {
     setDeleteDialogOpen(true)
   }
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (!deleteItem) return
 
-    if (deleteItem.type === "subject") {
-      setSubjects(subjects.filter(s => s.id !== deleteItem.id))
-      if (USE_MOCK_DATA) {
-        const idx = MOCK_DATA.subjects.findIndex(s => s.id === deleteItem.id)
-        if (idx >= 0) MOCK_DATA.subjects.splice(idx, 1)
+    try {
+      if (deleteItem.type === "subject") {
+        await authFetch(`/api/subjects/${deleteItem.id}`, { method: "DELETE" })
+        setSubjects(subjects.filter(s => s.id !== deleteItem.id))
+      } else if (deleteItem.type === "topic") {
+        await authFetch(`/api/topics/${deleteItem.id}`, { method: "DELETE" })
+        setTopics(topics.filter(t => t.id !== deleteItem.id))
+      } else {
+        await authFetch(`/api/levels/${deleteItem.id}`, { method: "DELETE" })
+        setLevels(levels.filter(l => l.id !== deleteItem.id))
       }
-    } else if (deleteItem.type === "topic") {
-      setTopics(topics.filter(t => t.id !== deleteItem.id))
-      if (USE_MOCK_DATA) {
-        const idx = MOCK_DATA.topics.findIndex(t => t.id === deleteItem.id)
-        if (idx >= 0) MOCK_DATA.topics.splice(idx, 1)
-      }
-    } else {
-      setLevels(levels.filter(l => l.id !== deleteItem.id))
-      if (USE_MOCK_DATA) {
-        const idx = MOCK_DATA.levels.findIndex(l => l.id === deleteItem.id)
-        if (idx >= 0) MOCK_DATA.levels.splice(idx, 1)
-      }
-    }
 
-    toast.success("Eliminado correctamente")
-    setDeleteDialogOpen(false)
-    setDeleteItem(null)
+      toast.success("Eliminado correctamente")
+      setDeleteDialogOpen(false)
+      setDeleteItem(null)
+    } catch (error) {
+      console.error("Error deleting:", error)
+      toast.error("Error al eliminar")
+    }
   }
 
   const getColorClass = (color: string) => {

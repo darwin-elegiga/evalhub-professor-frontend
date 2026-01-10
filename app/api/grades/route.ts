@@ -1,20 +1,22 @@
-import { NextResponse } from "next/server"
-import { MOCK_DATA, USE_MOCK_DATA } from "@/lib/mock-data"
-import { apiClient } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
-import type { Grade } from "@/lib/types"
+import { NextRequest, NextResponse } from "next/server";
+import { serverFetch } from "@/lib/api-client";
+import { API_CONFIG } from "@/lib/api-config";
+import type { Grade } from "@/lib/types";
 
 // GET /api/grades - List all grades
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    if (USE_MOCK_DATA) {
-      return NextResponse.json(MOCK_DATA.grades || [])
-    } else {
-      const response = await apiClient.get<Grade[]>(API_CONFIG.ENDPOINTS.GRADES)
-      return NextResponse.json(response)
-    }
+    const token = request.headers.get("authorization")?.replace("Bearer ", "");
+    const response = await serverFetch<Grade[]>(API_CONFIG.ENDPOINTS.GRADES, {
+      method: "GET",
+      token,
+    });
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Error fetching grades:", error)
-    return NextResponse.json({ error: "Error fetching grades" }, { status: 500 })
+    console.error("Error fetching grades:", error);
+    return NextResponse.json(
+      { error: "Error fetching grades" },
+      { status: 500 }
+    );
   }
 }

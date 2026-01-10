@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -14,14 +14,16 @@ import {
 } from "@/components/ui/select"
 import type { Exam, Student, StudentGroup } from "@/lib/types"
 import { useRouter } from "next/navigation"
-import { Send, Copy, Check, Users, GraduationCap, Building } from "lucide-react"
+import { Send, Copy, Check, Users, GraduationCap, Building, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { apiClient } from "@/lib/api-client"
+import { API_CONFIG } from "@/lib/api-config"
+import { USE_MOCK_DATA, MOCK_DATA } from "@/lib/mock-data"
 
 interface AssignExamFormProps {
   exam: Exam
-  students: Student[]
   groups: StudentGroup[]
 }
 
@@ -32,12 +34,16 @@ interface MagicLink {
   magicLink: string
 }
 
-export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) {
+export function AssignExamForm({ exam, groups }: AssignExamFormProps) {
   const router = useRouter()
 
   // Cascade selection state
   const [selectedCareer, setSelectedCareer] = useState<string>("")
   const [selectedGroupId, setSelectedGroupId] = useState<string>("")
+
+  // Students fetched from selected group
+  const [groupStudents, setGroupStudents] = useState<Student[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(false)
 
   // Student selection
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
@@ -50,7 +56,7 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
 
   // Get unique careers from groups
   const careers = useMemo(() => {
-    const uniqueCareers = [...new Set(groups.map((g) => g.career))]
+    const uniqueCareers = [...new Set(groups.filter((g) => g.career).map((g) => g.career))]
     return uniqueCareers.sort()
   }, [groups])
 
@@ -60,17 +66,46 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
     return groups.filter((g) => g.career === selectedCareer)
   }, [groups, selectedCareer])
 
-  // Filter students by selected group
-  const filteredStudents = useMemo(() => {
-    if (!selectedGroupId) return []
-    return students.filter((s) => s.group_id === selectedGroupId)
-  }, [students, selectedGroupId])
+  // Load students when group is selected
+  useEffect(() => {
+    if (selectedGroupId) {
+      loadGroupStudents(selectedGroupId)
+    } else {
+      setGroupStudents([])
+    }
+  }, [selectedGroupId])
+
+  const loadGroupStudents = async (groupId: string) => {
+    setLoadingStudents(true)
+    try {
+      if (USE_MOCK_DATA) {
+        // Filter mock students by group
+        const students = MOCK_DATA.students.filter((s) =>
+          s.groups?.some((g) => g.id === groupId)
+        )
+        setGroupStudents(students)
+      } else {
+        // Fetch students from backend using the group endpoint
+        const students = await apiClient.get<Student[]>(
+          API_CONFIG.ENDPOINTS.GROUP_STUDENTS(groupId)
+        )
+        setGroupStudents(students)
+      }
+    } catch (error) {
+      console.error("Error loading group students:", error)
+      toast.error("Error al cargar estudiantes del grupo")
+      setGroupStudents([])
+    } finally {
+      setLoadingStudents(false)
+    }
+  }
 
   // Handle career change
   const handleCareerChange = (career: string) => {
     setSelectedCareer(career)
     setSelectedGroupId("")
     setSelectedStudents([])
+    setGroupStudents([])
   }
 
   // Handle group change
@@ -86,10 +121,10 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
   }
 
   const toggleAll = () => {
-    if (selectedStudents.length === filteredStudents.length) {
+    if (selectedStudents.length === groupStudents.length) {
       setSelectedStudents([])
     } else {
-      setSelectedStudents(filteredStudents.map((s) => s.id))
+      setSelectedStudents(groupStudents.map((s) => s.id))
     }
   }
 
@@ -116,22 +151,39 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
     setIsLoading(true)
 
     try {
-      // Build payload with camelCase
-      const response = await fetch("/api/exams/assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          examId: exam.id,
-          studentIds: selectedStudents,
-        }),
+      // Call backend directly with apiClient
+      const data = await apiClient.post<{
+        assignments: Array<{
+          studentId: string
+          studentName: string
+          studentEmail: string
+          magicToken: string
+          magicLink: string
+        }>
+        skippedCount: number
+      }>(API_CONFIG.ENDPOINTS.EXAMS_ASSIGN, {
+        examId: exam.id,
+        studentIds: selectedStudents,
       })
 
-      if (!response.ok) throw new Error("Error assigning exam")
+      // Transform to our MagicLink format
+      const links: MagicLink[] = data.assignments.map((a) => ({
+        studentId: a.studentId,
+        studentName: a.studentName,
+        magicToken: a.magicToken,
+        magicLink: a.magicLink,
+      }))
 
-      const data = await response.json()
-      setMagicLinks(data.assignments)
+      setMagicLinks(links)
       setShowLinksDialog(true)
-      toast.success(`Examen asignado a ${selectedStudents.length} estudiante(s)`)
+
+      if (data.skippedCount > 0) {
+        toast.success(
+          `Examen asignado a ${data.assignments.length} estudiante(s). ${data.skippedCount} ya tenían asignación.`
+        )
+      } else {
+        toast.success(`Examen asignado a ${data.assignments.length} estudiante(s)`)
+      }
     } catch (error) {
       console.error("Error assigning exam:", error)
       toast.error("Error al asignar el examen")
@@ -210,19 +262,11 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {filteredGroups.map((group) => {
-                  const studentCount = students.filter((s) => s.group_id === group.id).length
-                  return (
-                    <SelectItem key={group.id} value={group.id}>
-                      <span className="flex items-center gap-2">
-                        {group.name}
-                        <span className="text-xs text-muted-foreground">
-                          ({studentCount} estudiantes)
-                        </span>
-                      </span>
-                    </SelectItem>
-                  )
-                })}
+                {filteredGroups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </CardContent>
@@ -241,7 +285,9 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
                 <CardTitle className="text-lg">Seleccionar Estudiantes</CardTitle>
                 <CardDescription>
                   {selectedGroupId
-                    ? `${selectedStudents.length} de ${filteredStudents.length} seleccionado(s)`
+                    ? loadingStudents
+                      ? "Cargando estudiantes..."
+                      : `${selectedStudents.length} de ${groupStudents.length} seleccionado(s)`
                     : "Primero selecciona un grupo"
                   }
                 </CardDescription>
@@ -262,48 +308,56 @@ export function AssignExamForm({ exam, students, groups }: AssignExamFormProps) 
                   </div>
                 </div>
 
-                {/* Select all */}
-                <div className="flex items-center gap-2 border-b pb-3">
-                  <Checkbox
-                    id="select-all"
-                    checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
-                    onCheckedChange={toggleAll}
-                  />
-                  <Label htmlFor="select-all" className="font-medium cursor-pointer">
-                    Seleccionar todos ({filteredStudents.length})
-                  </Label>
-                </div>
-
-                {/* Student list */}
-                <div className="max-h-72 space-y-1 overflow-y-auto">
-                  {filteredStudents.length === 0 ? (
-                    <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
-                      <p className="text-sm text-muted-foreground">No hay estudiantes en este grupo</p>
+                {loadingStudents ? (
+                  <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Select all */}
+                    <div className="flex items-center gap-2 border-b pb-3">
+                      <Checkbox
+                        id="select-all"
+                        checked={selectedStudents.length === groupStudents.length && groupStudents.length > 0}
+                        onCheckedChange={toggleAll}
+                      />
+                      <Label htmlFor="select-all" className="font-medium cursor-pointer">
+                        Seleccionar todos ({groupStudents.length})
+                      </Label>
                     </div>
-                  ) : (
-                    filteredStudents.map((student) => (
-                      <div
-                        key={student.id}
-                        className={`flex items-center gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
-                          selectedStudents.includes(student.id)
-                            ? "border-primary bg-primary/5"
-                            : "hover:bg-gray-50"
-                        }`}
-                        onClick={() => toggleStudent(student.id)}
-                      >
-                        <Checkbox
-                          id={student.id}
-                          checked={selectedStudents.includes(student.id)}
-                          onCheckedChange={() => toggleStudent(student.id)}
-                        />
-                        <Label htmlFor={student.id} className="flex-1 cursor-pointer">
-                          <div className="font-medium">{student.full_name}</div>
-                          <div className="text-sm text-muted-foreground">{student.email}</div>
-                        </Label>
-                      </div>
-                    ))
-                  )}
-                </div>
+
+                    {/* Student list */}
+                    <div className="max-h-72 space-y-1 overflow-y-auto">
+                      {groupStudents.length === 0 ? (
+                        <div className="flex h-32 items-center justify-center rounded-md border border-dashed">
+                          <p className="text-sm text-muted-foreground">No hay estudiantes en este grupo</p>
+                        </div>
+                      ) : (
+                        groupStudents.map((student) => (
+                          <div
+                            key={student.id}
+                            className={`flex items-center gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
+                              selectedStudents.includes(student.id)
+                                ? "border-primary bg-primary/5"
+                                : "hover:bg-gray-50"
+                            }`}
+                            onClick={() => toggleStudent(student.id)}
+                          >
+                            <Checkbox
+                              id={student.id}
+                              checked={selectedStudents.includes(student.id)}
+                              onCheckedChange={() => toggleStudent(student.id)}
+                            />
+                            <Label htmlFor={student.id} className="flex-1 cursor-pointer">
+                              <div className="font-medium">{student.fullName}</div>
+                              <div className="text-sm text-muted-foreground">{student.email}</div>
+                            </Label>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <div className="flex h-32 items-center justify-center rounded-md border border-dashed">

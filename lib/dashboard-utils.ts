@@ -1,4 +1,4 @@
-import type { Exam, Student, StudentGroup } from "./types"
+import type { Exam, Student, StudentGroup, StudentExamAssignment } from "./types"
 
 // Types for dashboard statistics
 export interface DashboardStats {
@@ -10,11 +10,8 @@ export interface DashboardStats {
   groups: number
 }
 
-export interface Assignment {
-  id: string
-  status: "pending" | "in_progress" | "submitted" | "graded"
-  [key: string]: unknown
-}
+// Re-export for convenience
+export type Assignment = StudentExamAssignment
 
 // Calculate exam statistics
 export function calculateExamStats(exams: Exam[]): number {
@@ -60,12 +57,17 @@ export function calculateQuestionStats(questions: unknown[]): number {
 // Safe fetch with fallback - fetches data and returns empty array on error
 export async function safeFetch<T>(
   fetchFn: () => Promise<T>,
-  fallback: T
+  fallback: T,
+  label?: string
 ): Promise<T> {
   try {
-    return await fetchFn()
+    const result = await fetchFn()
+    if (label) {
+      console.log(`[Dashboard] ${label}:`, Array.isArray(result) ? result.length : result)
+    }
+    return result
   } catch (error) {
-    console.error("Error fetching data:", error)
+    console.error(`[Dashboard] Error fetching ${label || "data"}:`, error)
     return fallback
   }
 }

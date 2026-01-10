@@ -56,10 +56,10 @@ export default function DashboardPage() {
       } else {
         // Fetch each endpoint independently to handle partial failures
         const [exams, students, assignments, questions] = await Promise.all([
-          safeFetch(() => apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS), []),
-          safeFetch(() => apiClient.get<Student[]>(API_CONFIG.ENDPOINTS.STUDENTS), []),
-          safeFetch(() => apiClient.get<Assignment[]>(API_CONFIG.ENDPOINTS.ASSIGNMENTS), []),
-          safeFetch(() => apiClient.get<BankQuestion[]>(API_CONFIG.ENDPOINTS.QUESTIONS), []),
+          safeFetch(() => apiClient.get<Exam[]>(API_CONFIG.ENDPOINTS.EXAMS), [], "Exams"),
+          safeFetch(() => apiClient.get<Student[]>(API_CONFIG.ENDPOINTS.STUDENTS), [], "Students"),
+          safeFetch(() => apiClient.get<Assignment[]>(API_CONFIG.ENDPOINTS.ASSIGNMENTS), [], "Assignments"),
+          safeFetch(() => apiClient.get<BankQuestion[]>(API_CONFIG.ENDPOINTS.QUESTIONS), [], "Questions"),
         ])
 
         const assignmentStats = calculateAssignmentStats(assignments)

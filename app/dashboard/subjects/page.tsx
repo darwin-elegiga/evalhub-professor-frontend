@@ -375,8 +375,8 @@ export default function SubjectsPage() {
   }
 
   return (
-    <main className="flex-1 p-6">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <main className="flex-1 p-4 sm:p-6">
+      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -433,56 +433,59 @@ export default function SubjectsPage() {
                   <div
                     className={`border-l-4 ${colorClass.bg.replace("bg-", "border-")}`}
                   >
-                    <div className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <button
-                            onClick={() => toggleSubjectExpanded(subject.id)}
-                            className="p-1 hover:bg-gray-100 rounded transition-colors"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-5 w-5 text-gray-500" />
-                            ) : (
-                              <ChevronRight className="h-5 w-5 text-gray-500" />
-                            )}
-                          </button>
-                          <div
-                            className={`h-4 w-4 rounded-full ${colorClass.bg}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-semibold text-gray-900 truncate">
+                    <div className="p-3 sm:p-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          onClick={() => toggleSubjectExpanded(subject.id)}
+                          className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-5 w-5 text-gray-500" />
+                          ) : (
+                            <ChevronRight className="h-5 w-5 text-gray-500" />
+                          )}
+                        </button>
+                        <div
+                          className={`h-4 w-4 rounded-full ${colorClass.bg} shrink-0 hidden sm:block`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <div
+                              className={`h-3 w-3 rounded-full ${colorClass.bg} shrink-0 sm:hidden`}
+                            />
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                               {subject.name}
                             </h3>
-                            {subject.description && (
-                              <p className="text-sm text-gray-500 truncate">
-                                {subject.description}
-                              </p>
-                            )}
+                            <Badge variant="secondary" className="text-xs">
+                              {subjectTopics.length} tema{subjectTopics.length !== 1 ? "s" : ""}
+                            </Badge>
                           </div>
-                          <Badge variant="secondary" className="ml-2">
-                            {subjectTopics.length} tema{subjectTopics.length !== 1 ? "s" : ""}
-                          </Badge>
+                          {subject.description && (
+                            <p className="text-sm text-gray-500 line-clamp-1 hidden sm:block">
+                              {subject.description}
+                            </p>
+                          )}
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 ml-4">
+                        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                           <button
                             onClick={() => openCreateTopicModal(subject.id)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                            className="p-1.5 sm:p-2 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
                             title="Agregar tema"
                           >
                             <Plus className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => openEditSubjectModal(subject)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                            className="p-1.5 sm:p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                             title="Editar asignatura"
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => setDeleteSubjectId(subject.id)}
-                            className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="p-1.5 sm:p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Eliminar asignatura"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -524,7 +527,7 @@ export default function SubjectsPage() {
                               Agregar
                             </Button>
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             {subjectTopics.map((topic) => {
                               const topicColor = getColorClasses(topic.color)
                               return (

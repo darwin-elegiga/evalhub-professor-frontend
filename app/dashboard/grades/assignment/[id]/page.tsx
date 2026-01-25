@@ -61,7 +61,7 @@ export default function GradingPage() {
 
   if (!gradingData) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="bg-gray-100">
         <div className="container mx-auto p-6">
           <Button asChild variant="ghost" className="mb-4">
             <Link href="/dashboard/grades">
@@ -80,7 +80,7 @@ export default function GradingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="bg-gray-100">
       <div className="container mx-auto p-6">
         <GradingInterface
           assignment={gradingData.assignment}

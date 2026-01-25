@@ -373,20 +373,21 @@ export default function CreateQuestionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto p-6">
+    <div className="bg-gray-100">
+      <div className="container mx-auto p-4 sm:p-6 pb-8">
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/dashboard/questions">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Banco
+            <span className="hidden sm:inline">Volver al Banco</span>
+            <span className="sm:hidden">Volver</span>
           </Link>
         </Button>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Crear Nueva Pregunta
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Agrega una pregunta a tu banco de preguntas
           </p>
         </div>
@@ -394,13 +395,13 @@ export default function CreateQuestionPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Basic Info */}
           <Card>
-            <CardHeader>
-              <CardTitle>Información Básica</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl">Información Básica</CardTitle>
+              <CardDescription className="text-sm">
                 Título y metadatos de la pregunta
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
               <div className="space-y-2">
                 <Label htmlFor="title">Título (para identificación)</Label>
                 <Controller
@@ -583,7 +584,7 @@ export default function CreateQuestionPage() {
               {/* Tags */}
               <div className="space-y-2">
                 <Label>Tags</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
@@ -594,8 +595,9 @@ export default function CreateQuestionPage() {
                         addTag();
                       }
                     }}
+                    className="flex-1"
                   />
-                  <Button type="button" variant="outline" onClick={addTag}>
+                  <Button type="button" variant="outline" onClick={addTag} className="w-full sm:w-auto">
                     Agregar
                   </Button>
                 </div>
@@ -621,14 +623,14 @@ export default function CreateQuestionPage() {
 
           {/* Question Content */}
           <Card>
-            <CardHeader>
-              <CardTitle>Enunciado de la Pregunta</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl">Enunciado de la Pregunta</CardTitle>
+              <CardDescription className="text-sm">
                 Usa el editor para escribir el enunciado. Puedes incluir
                 ecuaciones LaTeX con $...$
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
               <Controller
                 name="content"
                 control={control}
@@ -651,32 +653,34 @@ export default function CreateQuestionPage() {
 
           {/* Question Type */}
           <Card>
-            <CardHeader>
-              <CardTitle>Tipo de Pregunta</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl">Tipo de Pregunta</CardTitle>
+              <CardDescription className="text-sm">
                 Selecciona cómo responderán los estudiantes
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
               <Controller
                 name="question_type"
                 control={control}
                 render={({ field }) => (
                   <Tabs value={field.value} onValueChange={field.onChange}>
-                    <TabsList className="grid w-full grid-cols-4">
-                      {QUESTION_TYPES.map((type) => (
-                        <TabsTrigger key={type.value} value={type.value}>
-                          {type.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
+                    <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+                      <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-4">
+                        {QUESTION_TYPES.map((type) => (
+                          <TabsTrigger key={type.value} value={type.value} className="whitespace-nowrap">
+                            {type.label}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </div>
 
                     {/* Multiple Choice Config */}
                     <TabsContent
                       value="multiple_choice"
                       className="space-y-4 mt-4"
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                         <div className="flex items-center gap-2">
                           <Checkbox
                             id="allowMultiple"
@@ -685,7 +689,7 @@ export default function CreateQuestionPage() {
                               setMcAllowMultiple(checked as boolean)
                             }
                           />
-                          <Label htmlFor="allowMultiple">
+                          <Label htmlFor="allowMultiple" className="text-sm">
                             Permitir múltiples respuestas
                           </Label>
                         </div>
@@ -697,7 +701,7 @@ export default function CreateQuestionPage() {
                               setMcShuffleOptions(checked as boolean)
                             }
                           />
-                          <Label htmlFor="shuffleOptions">
+                          <Label htmlFor="shuffleOptions" className="text-sm">
                             Mezclar opciones
                           </Label>
                         </div>
@@ -708,9 +712,9 @@ export default function CreateQuestionPage() {
                         {mcOptions.map((option, index) => (
                           <div
                             key={option.id}
-                            className="flex items-start gap-2 rounded-md border p-3"
+                            className="flex items-start gap-2 rounded-md border p-2 sm:p-3"
                           >
-                            <GripVertical className="h-5 w-5 text-muted-foreground mt-2 cursor-grab" />
+                            <GripVertical className="hidden sm:block h-5 w-5 text-muted-foreground mt-2 cursor-grab shrink-0" />
                             <Checkbox
                               checked={option.is_correct}
                               onCheckedChange={(checked) =>
@@ -718,9 +722,9 @@ export default function CreateQuestionPage() {
                                   is_correct: checked as boolean,
                                 })
                               }
-                              className="mt-2"
+                              className="mt-2 shrink-0"
                             />
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <TiptapEditor
                                 content={option.text}
                                 onChange={(text) =>
@@ -736,6 +740,7 @@ export default function CreateQuestionPage() {
                               size="icon"
                               onClick={() => removeMcOption(option.id)}
                               disabled={mcOptions.length === 1}
+                              className="shrink-0"
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
@@ -745,6 +750,7 @@ export default function CreateQuestionPage() {
                           type="button"
                           variant="outline"
                           onClick={addMcOption}
+                          className="w-full sm:w-auto"
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Agregar Opción
@@ -882,43 +888,45 @@ export default function CreateQuestionPage() {
                     {/* Graph Click Config */}
                     <TabsContent value="graph_click" className="space-y-4 mt-4">
                       {/* Mode Selector - Minimal */}
-                      <div className="flex items-center gap-3">
-                        <Label className="text-sm text-gray-600">Modo:</Label>
-                        <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setGraphConfig({
-                                ...graphConfig,
-                                isInteractive: false,
-                              })
-                            }
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                              !graphConfig.isInteractive
-                                ? "bg-white text-gray-900 shadow-sm"
-                                : "text-gray-500 hover:text-gray-700"
-                            }`}
-                          >
-                            <Eye className="h-4 w-4" />
-                            Visual
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setGraphConfig({
-                                ...graphConfig,
-                                isInteractive: true,
-                              })
-                            }
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                              graphConfig.isInteractive
-                                ? "bg-white text-gray-900 shadow-sm"
-                                : "text-gray-500 hover:text-gray-700"
-                            }`}
-                          >
-                            <MousePointer className="h-4 w-4" />
-                            Interactivo
-                          </button>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm text-gray-600">Modo:</Label>
+                          <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setGraphConfig({
+                                  ...graphConfig,
+                                  isInteractive: false,
+                                })
+                              }
+                              className={`px-2 sm:px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 ${
+                                !graphConfig.isInteractive
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-500 hover:text-gray-700"
+                              }`}
+                            >
+                              <Eye className="h-4 w-4" />
+                              Visual
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setGraphConfig({
+                                  ...graphConfig,
+                                  isInteractive: true,
+                                })
+                              }
+                              className={`px-2 sm:px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 ${
+                                graphConfig.isInteractive
+                                  ? "bg-white text-gray-900 shadow-sm"
+                                  : "text-gray-500 hover:text-gray-700"
+                              }`}
+                            >
+                              <MousePointer className="h-4 w-4" />
+                              Interactivo
+                            </button>
+                          </div>
                         </div>
                         <span className="text-xs text-gray-400">
                           {graphConfig.isInteractive
@@ -936,7 +944,7 @@ export default function CreateQuestionPage() {
 
                       {/* Interactive mode info */}
                       {graphConfig.isInteractive && (
-                        <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
+                        <div className="flex flex-col gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm sm:flex-row sm:items-center sm:gap-4">
                           <div className="flex items-center gap-2 text-gray-600">
                             <span className="text-gray-400">
                               Punto correcto:
@@ -952,7 +960,7 @@ export default function CreateQuestionPage() {
                               {graphConfig.toleranceRadius}
                             </span>
                           </div>
-                          <span className="text-xs text-gray-400 ml-auto">
+                          <span className="text-xs text-gray-400 sm:ml-auto">
                             Configura en la pestaña "Respuesta"
                           </span>
                         </div>
@@ -973,15 +981,16 @@ export default function CreateQuestionPage() {
           </Card>
 
           {/* Submit */}
-          <div className="flex justify-end gap-4">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.back()}
+              className="w-full sm:w-auto"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
               <Save className="mr-2 h-4 w-4" />
               {isSubmitting ? "Guardando..." : "Guardar Pregunta"}
             </Button>

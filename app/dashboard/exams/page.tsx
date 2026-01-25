@@ -95,7 +95,7 @@ export default function ExamsPage() {
   }
 
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 p-4 sm:p-6">
       <div className="mx-auto max-w-4xl space-y-4">
         {/* Filters */}
         {exams.length > 0 && (
@@ -150,8 +150,8 @@ export default function ExamsPage() {
         )}
 
         {/* Action buttons */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="-mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-2 min-w-max pb-2">
             <Button asChild>
               <Link href="/dashboard/exams/create">
                 <Plus className="mr-2 h-4 w-4" />
@@ -164,13 +164,13 @@ export default function ExamsPage() {
                 Asignaciones
               </Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/exams/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Configuración
+              </Link>
+            </Button>
           </div>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/exams/settings">
-              <Settings className="mr-2 h-4 w-4" />
-              Configuración
-            </Link>
-          </Button>
         </div>
 
         {/* Empty state */}
@@ -206,21 +206,21 @@ export default function ExamsPage() {
                 <Link
                   key={exam.id}
                   href={`/dashboard/exams/${exam.id}`}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
+                  className="flex items-start gap-3 px-4 py-4 hover:bg-gray-50 transition-colors group sm:items-center sm:gap-4 sm:px-5"
                 >
                   {/* Icon */}
-                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10">
+                  <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 shrink-0">
                     <FileQuestion className="h-5 w-5 text-primary" />
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-medium text-gray-900 truncate">
                         {exam.title}
                       </h3>
                       {subject && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs shrink-0">
                           {subject.name}
                         </Badge>
                       )}
@@ -228,10 +228,20 @@ export default function ExamsPage() {
                     <p className="text-sm text-gray-500 truncate">
                       {exam.description || "Sin descripción"}
                     </p>
+                    {/* Meta - mobile */}
+                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 sm:hidden">
+                      {exam.durationMinutes && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{exam.durationMinutes} min</span>
+                        </div>
+                      )}
+                      <span>{new Date(exam.createdAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
 
-                  {/* Meta */}
-                  <div className="flex items-center gap-4 shrink-0 text-sm text-gray-500">
+                  {/* Meta - desktop */}
+                  <div className="hidden sm:flex items-center gap-4 shrink-0 text-sm text-gray-500">
                     {exam.durationMinutes && (
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />

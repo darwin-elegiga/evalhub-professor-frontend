@@ -88,7 +88,7 @@ const quickActions = [
 export function AppSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const { setOpen } = useSidebar()
+  const { setOpen, setOpenMobile, isMobile } = useSidebar()
 
   const handleMouseEnter = () => {
     setOpen(true)
@@ -96,6 +96,12 @@ export function AppSidebar() {
 
   const handleMouseLeave = () => {
     setOpen(false)
+  }
+
+  const handleNavigation = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
   }
 
   const getInitials = (name: string) => {
@@ -122,15 +128,15 @@ export function AppSidebar() {
       onMouseLeave={handleMouseLeave}
     >
       <SidebarHeader className="border-b border-gray-100">
-        <Link href="/dashboard" className="flex h-8 items-center">
+        <Link href="/dashboard" className="flex h-8 items-center" onClick={handleNavigation}>
           <Image
             src="/isotipo.png"
             alt="EVALHUB"
             width={32}
             height={32}
-            className="h-8 w-8 shrink-0 object-contain transition-transform duration-200"
+            className="hidden h-8 w-8 shrink-0 object-contain transition-transform duration-200 md:block"
           />
-          <span className="ml-2 overflow-hidden transition-all duration-200 ease-linear group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+          <span className="overflow-hidden transition-all duration-200 ease-linear md:ml-2 md:group-data-[collapsible=icon]:ml-0 md:group-data-[collapsible=icon]:w-0 md:group-data-[collapsible=icon]:opacity-0">
             <Image
               src="/logotipo.png"
               alt="EVALHUB"
@@ -157,7 +163,7 @@ export function AppSidebar() {
                     isActive={isActive(item.url)}
                     className="transition-colors hover:bg-gray-100 data-[active=true]:bg-primary/10 data-[active=true]:text-primary"
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url} onClick={handleNavigation}>
                       <item.icon className="h-4 w-4" />
                       <span className="font-medium">{item.title}</span>
                     </Link>
@@ -183,7 +189,7 @@ export function AppSidebar() {
                     tooltip={item.title}
                     className="transition-colors hover:bg-gray-100"
                   >
-                    <Link href={item.url}>
+                    <Link href={item.url} onClick={handleNavigation}>
                       <item.icon className="h-4 w-4" />
                       <span className="font-medium">{item.title}</span>
                     </Link>

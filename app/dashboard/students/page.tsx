@@ -786,7 +786,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <main className="flex-1 p-6">
+    <main className="flex-1 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         {/* Stats Row */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -838,79 +838,81 @@ export default function StudentsPage() {
           </div>
 
           {/* Filter row */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={groupFilter} onValueChange={setGroupFilter}>
-              <SelectTrigger className="w-[160px] bg-white border-gray-200 text-sm">
-                <SelectValue placeholder="Grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los grupos</SelectItem>
-                <SelectItem value="none">Sin grupo</SelectItem>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={careerFilter} onValueChange={setCareerFilter}>
-              <SelectTrigger className="w-[180px] bg-white border-gray-200 text-sm">
-                <SelectValue placeholder="Carrera" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las carreras</SelectItem>
-                {uniqueCareers.map((c) => (
-                  <SelectItem key={c} value={c!}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-[120px] bg-white border-gray-200 text-sm">
-                <SelectValue placeholder="Año" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {uniqueYears.map((y) => (
-                  <SelectItem key={y} value={y!.toString()}>
-                    Año {y}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Limpiar
-              </Button>
-            )}
-
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-sm text-gray-500">Mostrar:</span>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(v) => setItemsPerPage(Number(v))}
-              >
-                <SelectTrigger className="w-[80px] bg-white border-gray-200 text-sm">
-                  <SelectValue />
+          <div className="-mx-4 px-4 sm:-mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 min-w-max pb-2 sm:pb-0">
+              <Select value={groupFilter} onValueChange={setGroupFilter}>
+                <SelectTrigger className="w-[140px] sm:w-[160px] bg-white border-gray-200 text-sm">
+                  <SelectValue placeholder="Grupo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ITEMS_PER_PAGE_OPTIONS.map((n) => (
-                    <SelectItem key={n} value={n.toString()}>
-                      {n}
+                  <SelectItem value="all">Todos los grupos</SelectItem>
+                  <SelectItem value="none">Sin grupo</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              <Select value={careerFilter} onValueChange={setCareerFilter}>
+                <SelectTrigger className="w-[140px] sm:w-[180px] bg-white border-gray-200 text-sm">
+                  <SelectValue placeholder="Carrera" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las carreras</SelectItem>
+                  {uniqueCareers.map((c) => (
+                    <SelectItem key={c} value={c!}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={yearFilter} onValueChange={setYearFilter}>
+                <SelectTrigger className="w-[100px] sm:w-[120px] bg-white border-gray-200 text-sm">
+                  <SelectValue placeholder="Año" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueYears.map((y) => (
+                    <SelectItem key={y} value={y!.toString()}>
+                      Año {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-gray-500 hover:text-gray-700 shrink-0"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpiar
+                </Button>
+              )}
+
+              <div className="ml-auto flex items-center gap-2 shrink-0">
+                <span className="text-sm text-gray-500 hidden sm:inline">Mostrar:</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(v) => setItemsPerPage(Number(v))}
+                >
+                  <SelectTrigger className="w-[70px] sm:w-[80px] bg-white border-gray-200 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ITEMS_PER_PAGE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={n.toString()}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
@@ -939,6 +941,8 @@ export default function StudentsPage() {
           </Card>
         ) : (
           <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="min-w-[700px]">
             {/* Table Header */}
             <div className="grid grid-cols-12 gap-2 border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider">
               <button
@@ -1172,40 +1176,44 @@ export default function StudentsPage() {
                 );
               })}
             </div>
+              </div>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-3">
-                <p className="text-sm text-gray-500">
-                  Mostrando {(currentPage - 1) * itemsPerPage + 1} -{" "}
-                  {Math.min(
+              <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-3 py-2 sm:px-4 sm:py-3">
+                <p className="text-xs sm:text-sm text-gray-500">
+                  <span className="hidden sm:inline">Mostrando </span>
+                  {(currentPage - 1) * itemsPerPage + 1}-{Math.min(
                     currentPage * itemsPerPage,
                     filteredAndSortedStudents.length
                   )}{" "}
-                  de {filteredAndSortedStudents.length}
+                  <span className="hidden sm:inline">de </span>
+                  <span className="sm:hidden">/ </span>
+                  {filteredAndSortedStudents.length}
                 </p>
                 <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-7 w-7 sm:h-8 sm:w-8"
                     onClick={() => setCurrentPage(1)}
                     disabled={currentPage === 1}
                   >
-                    <ChevronsLeft className="h-4 w-4" />
+                    <ChevronsLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-7 w-7 sm:h-8 sm:w-8"
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
 
-                  {/* Page numbers */}
-                  <div className="flex items-center gap-1 px-2">
+                  {/* Page numbers - hidden on mobile */}
+                  <div className="hidden sm:flex items-center gap-1 px-2">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum: number;
                       if (totalPages <= 5) {
@@ -1233,23 +1241,28 @@ export default function StudentsPage() {
                     })}
                   </div>
 
+                  {/* Current page indicator - mobile only */}
+                  <span className="sm:hidden text-xs text-gray-500 px-2">
+                    {currentPage}/{totalPages}
+                  </span>
+
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-7 w-7 sm:h-8 sm:w-8"
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-7 w-7 sm:h-8 sm:w-8"
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={currentPage === totalPages}
                   >
-                    <ChevronsRight className="h-4 w-4" />
+                    <ChevronsRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
               </div>

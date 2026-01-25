@@ -258,46 +258,48 @@ export default function QuestionBankPage() {
   }
 
   return (
-    <main className="flex-1 p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex items-center justify-between">
-          <p className="text-gray-500">
+    <main className="flex-1 p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-500">
             {questions.length} preguntas en tu banco
           </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={openImportDialog}>
-              <Upload className="mr-2 h-4 w-4" />
-              Importar
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={questions.length === 0}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Exportar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportAll}>
-                  Exportar todas ({questions.length})
-                </DropdownMenuItem>
-                {filteredQuestions.length !== questions.length && (
-                  <DropdownMenuItem onClick={handleExportFiltered}>
-                    Exportar filtradas ({filteredQuestions.length})
+          <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 min-w-max">
+              <Button variant="outline" size="sm" onClick={openImportDialog}>
+                <Upload className="mr-2 h-4 w-4" />
+                Importar
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={questions.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportAll}>
+                    Exportar todas ({questions.length})
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {filteredQuestions.length !== questions.length && (
+                    <DropdownMenuItem onClick={handleExportFiltered}>
+                      Exportar filtradas ({filteredQuestions.length})
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
 
         <Card className="border-gray-200 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-4 md:flex-row">
-              <div className="relative flex-1">
+          <CardContent className="p-4 sm:pt-6">
+            <div className="space-y-3">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por título o tags..."
@@ -307,50 +309,54 @@ export default function QuestionBankPage() {
                 />
               </div>
 
-              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Asignatura" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las asignaturas</SelectItem>
-                  {subjects.map((subject) => (
-                    <SelectItem key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto scrollbar-hide">
+                <div className="flex items-center gap-2 min-w-max pb-1">
+                  <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                    <SelectTrigger className="w-[160px] sm:w-[180px]">
+                      <SelectValue placeholder="Asignatura" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas las asignaturas</SelectItem>
+                      {subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los tipos</SelectItem>
-                  {Object.entries(QUESTION_TYPE_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-[140px] sm:w-[180px]">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los tipos</SelectItem>
+                      {Object.entries(QUESTION_TYPE_LABELS).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              <Select
-                value={difficultyFilter}
-                onValueChange={setDifficultyFilter}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Dificultad" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {Object.entries(DIFFICULTY_LABELS).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Select
+                    value={difficultyFilter}
+                    onValueChange={setDifficultyFilter}
+                  >
+                    <SelectTrigger className="w-[120px] sm:w-[180px]">
+                      <SelectValue placeholder="Dificultad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {Object.entries(DIFFICULTY_LABELS).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

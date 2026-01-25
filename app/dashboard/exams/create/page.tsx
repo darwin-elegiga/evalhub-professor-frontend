@@ -392,25 +392,27 @@ export default function CreateExamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto p-6">
+    <div className="bg-gray-100">
+      <div className="container mx-auto p-4 sm:p-6 pb-8">
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Dashboard
+            <span className="hidden sm:inline">Volver al Dashboard</span>
+            <span className="sm:hidden">Volver</span>
           </Link>
         </Button>
 
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 sm:mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Crear Nuevo Examen</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Crear Nuevo Examen</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Selecciona preguntas de tu banco para crear el examen
             </p>
           </div>
           <Button
             variant="outline"
             onClick={() => setImportDialogOpen(true)}
+            className="w-full sm:w-auto"
           >
             <Upload className="mr-2 h-4 w-4" />
             Importar JSON
@@ -422,10 +424,10 @@ export default function CreateExamPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Info */}
             <Card>
-              <CardHeader>
-                <CardTitle>Información del Examen</CardTitle>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl">Información del Examen</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
                 <div className="space-y-2">
                   <Label htmlFor="title">Título del Examen *</Label>
                   <Input
@@ -480,16 +482,16 @@ export default function CreateExamPage() {
 
             {/* Selected Questions */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-3 p-4 sm:p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle>Preguntas del Examen</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-lg sm:text-xl">Preguntas del Examen</CardTitle>
+                  <CardDescription className="text-sm">
                     {selectedQuestions.length} preguntas · Peso total: {totalPoints}
                   </CardDescription>
                 </div>
                 <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                   <SheetTrigger asChild>
-                    <Button>
+                    <Button className="w-full sm:w-auto">
                       <Library className="mr-2 h-4 w-4" />
                       Agregar del Banco
                     </Button>
@@ -703,7 +705,7 @@ export default function CreateExamPage() {
                   </SheetContent>
                 </Sheet>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                 {selectedQuestions.length === 0 ? (
                   <div className="flex h-32 flex-col items-center justify-center rounded-md border border-dashed">
                     <Library className="h-8 w-8 text-muted-foreground mb-2" />
@@ -718,36 +720,54 @@ export default function CreateExamPage() {
                       return (
                         <div
                           key={sq.id}
-                          className="flex items-center gap-2 rounded-md border p-3"
+                          className="flex flex-col gap-2 rounded-md border p-2 sm:p-3 sm:flex-row sm:items-center sm:gap-2"
                         >
-                          <div className="flex flex-col gap-1">
+                          {/* Top row on mobile: order controls + number + title */}
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex flex-row gap-0.5 sm:flex-col sm:gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => moveQuestion(index, "up")}
+                                disabled={index === 0}
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => moveQuestion(index, "down")}
+                                disabled={index === selectedQuestions.length - 1}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </div>
+
+                            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium shrink-0">
+                              {index + 1}
+                            </div>
+
+                            <div className="flex-1 min-w-0 sm:hidden">
+                              <p className="font-medium text-sm truncate">{sq.bankQuestion.title}</p>
+                            </div>
+
+                            {/* Delete button on mobile - right aligned */}
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveQuestion(index, "up")}
-                              disabled={index === 0}
+                              onClick={() => removeQuestion(sq.id)}
+                              className="sm:hidden shrink-0"
                             >
-                              <ChevronUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => moveQuestion(index, "down")}
-                              disabled={index === selectedQuestions.length - 1}
-                            >
-                              <ChevronDown className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
 
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-sm font-medium">
-                            {index + 1}
-                          </div>
-
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{sq.bankQuestion.title}</p>
-                            <div className="mt-1 flex gap-1">
+                          {/* Desktop title + badges */}
+                          <div className="hidden sm:block flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{sq.bankQuestion.title}</p>
+                            <div className="mt-1 flex flex-wrap gap-1">
                               {topic && (
                                 <Badge
                                   variant="secondary"
@@ -765,28 +785,50 @@ export default function CreateExamPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">×</span>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="10"
-                              className="w-16 text-center"
-                              value={sq.weight}
-                              onChange={(e) =>
-                                updateQuestionWeight(sq.id, Number(e.target.value))
-                              }
-                              title="Peso relativo (1-10)"
-                            />
-                          </div>
+                          {/* Bottom row on mobile: badges + weight */}
+                          <div className="flex items-center justify-between gap-2 sm:justify-end">
+                            <div className="flex flex-wrap gap-1 sm:hidden">
+                              {topic && (
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs ${TOPIC_COLORS[topic.color] || ""}`}
+                                >
+                                  {topic.name}
+                                </Badge>
+                              )}
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${DIFFICULTY_COLORS[sq.bankQuestion.difficulty]}`}
+                              >
+                                {DIFFICULTY_LABELS[sq.bankQuestion.difficulty]}
+                              </Badge>
+                            </div>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeQuestion(sq.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                              <span className="text-sm text-muted-foreground">×</span>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="10"
+                                className="w-14 sm:w-16 text-center"
+                                value={sq.weight}
+                                onChange={(e) =>
+                                  updateQuestionWeight(sq.id, Number(e.target.value))
+                                }
+                                title="Peso relativo (1-10)"
+                              />
+                            </div>
+
+                            {/* Delete button on desktop */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeQuestion(sq.id)}
+                              className="hidden sm:flex shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
                         </div>
                       )
                     })}
@@ -800,13 +842,13 @@ export default function CreateExamPage() {
           <div className="space-y-6">
             {/* Exam Config */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                   <Settings className="h-5 w-5" />
                   Configuración
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Mezclar preguntas</Label>
@@ -899,10 +941,10 @@ export default function CreateExamPage() {
 
             {/* Summary */}
             <Card>
-              <CardHeader>
-                <CardTitle>Resumen</CardTitle>
+              <CardHeader className="p-4 sm:p-6">
+                <CardTitle className="text-lg sm:text-xl">Resumen</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2 p-4 pt-0 sm:p-6 sm:pt-0">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Preguntas:</span>
                   <span className="font-medium">{selectedQuestions.length}</span>

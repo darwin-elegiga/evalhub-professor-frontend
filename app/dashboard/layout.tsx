@@ -17,10 +17,8 @@ export default function DashboardLayout({
         <SidebarProvider defaultOpen={false}>
           <AppSidebar />
           <SidebarInset>
-            <div className="flex min-h-screen flex-col bg-gray-50/50">
-              <DashboardHeader />
-              <main className="flex-1 overflow-auto">{children}</main>
-            </div>
+            <DashboardHeader />
+            <div className="flex-1 bg-gray-50/50">{children}</div>
           </SidebarInset>
         </SidebarProvider>
       </HeaderActionsProvider>

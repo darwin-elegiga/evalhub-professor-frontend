@@ -3,8 +3,15 @@
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { Menu, Plus, MoreVertical } from "lucide-react"
 import { useHeaderActions } from "@/lib/header-actions-context"
+import { useSidebar } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const PAGE_CONFIG: Record<
   string,
@@ -68,24 +75,67 @@ export function DashboardHeader() {
   const pathname = usePathname()
   const config = getPageConfig(pathname)
   const { actions } = useHeaderActions()
+  const { toggleSidebar } = useSidebar()
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6">
-      <h1 className="text-sm font-medium text-gray-900">{config.title}</h1>
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100 md:hidden"
+          onClick={toggleSidebar}
+          aria-label="Abrir menú"
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+        <h1 className="text-sm font-medium text-gray-900">{config.title}</h1>
+      </div>
       <div className="flex items-center gap-2">
-        {/* Context actions from pages */}
-        {actions.map((action, index) => (
-          <Button key={index} size="sm" variant={index === 0 ? "default" : "outline"} onClick={action.onClick}>
-            {index === 0 && <Plus className="mr-2 h-4 w-4" />}
-            {action.label}
+        {/* Single primary action */}
+        {actions.length === 1 && (
+          <Button
+            size="sm"
+            onClick={actions[0].onClick}
+            className="px-2 sm:px-3"
+          >
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{actions[0].label}</span>
           </Button>
-        ))}
+        )}
+        {/* Multiple actions: primary button + dropdown for rest */}
+        {actions.length > 1 && (
+          <>
+            <Button
+              size="sm"
+              onClick={actions[0].onClick}
+              className="px-2 sm:px-3"
+            >
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{actions[0].label}</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="px-2">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {actions.slice(1).map((action, index) => (
+                  <DropdownMenuItem key={index} onClick={action.onClick}>
+                    {action.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
         {/* Default link-based action if no context actions */}
         {actions.length === 0 && config.defaultAction && (
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="px-2 sm:px-3">
             <Link href={config.defaultAction.href}>
-              <Plus className="mr-2 h-4 w-4" />
-              {config.defaultAction.label}
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{config.defaultAction.label}</span>
             </Link>
           </Button>
         )}

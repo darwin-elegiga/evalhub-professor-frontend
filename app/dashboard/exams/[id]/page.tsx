@@ -108,7 +108,7 @@ export default function ExamDetailsPage() {
 
   if (!exam) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="bg-gray-100">
         <div className="container mx-auto p-6">
           <Button asChild variant="ghost" className="mb-4">
             <Link href="/dashboard/exams">
@@ -140,8 +140,8 @@ export default function ExamDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto p-6">
+    <div className="bg-gray-100">
+      <div className="container mx-auto p-4 sm:p-6">
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/dashboard/exams">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -149,31 +149,33 @@ export default function ExamDetailsPage() {
           </Link>
         </Button>
 
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-8 space-y-4">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-gray-900">{exam.title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">{exam.title}</h1>
               {subject && <Badge variant="secondary">{subject.name}</Badge>}
             </div>
             <p className="mt-2 text-muted-foreground">
               {exam.description || "Sin descripción"}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleExport}>
-              <Download className="mr-2 h-4 w-4" />
-              Exportar JSON
-            </Button>
-            <Button asChild>
-              <Link href={`/dashboard/exams/${exam.id}/assign`}>
-                <Send className="mr-2 h-4 w-4" />
-                Asignar Examen
-              </Link>
-            </Button>
+          <div className="-mx-4 px-4 sm:-mx-6 sm:px-6 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 min-w-max pb-2">
+              <Button variant="outline" onClick={handleExport}>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar JSON
+              </Button>
+              <Button asChild>
+                <Link href={`/dashboard/exams/${exam.id}/assign`}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Asignar Examen
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Duración</CardTitle>
@@ -220,25 +222,25 @@ export default function ExamDetailsPage() {
                     className="block"
                   >
                     <Card className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg">
+                      <CardHeader className="p-4 sm:p-6">
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base sm:text-lg">
                               Pregunta {index + 1}: {question.title}
                             </CardTitle>
+                            <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <Badge variant="outline" className="text-xs">
                               {QUESTION_TYPE_LABELS[question.questionType]}
                             </Badge>
-                          </div>
-                          <div className="flex items-center gap-2">
                             <Badge className={DIFFICULTY_COLORS[question.difficulty]}>
                               {DIFFICULTY_LABELS[question.difficulty]}
                             </Badge>
                             <Badge>Peso: {examQuestion.weight}</Badge>
-                            <ChevronRight className="h-4 w-4 text-gray-400" />
                           </div>
                         </div>
-                        <CardDescription className="line-clamp-2">
+                        <CardDescription className="line-clamp-2 mt-2">
                           <span
                             dangerouslySetInnerHTML={{ __html: question.content }}
                           />

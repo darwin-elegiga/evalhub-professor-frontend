@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context"
 import { authFetch } from "@/lib/api-client"
 import { useEffect, useState, useMemo } from "react"
 import type { Exam, Subject } from "@/lib/types"
-import { Plus, ChevronRight, Search, X, Settings, Clock, FileQuestion } from "lucide-react"
+import { Plus, ChevronRight, Search, X, Settings, Clock, FileQuestion, ClipboardList } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -156,6 +156,12 @@ export default function ExamsPage() {
               <Link href="/dashboard/exams/create">
                 <Plus className="mr-2 h-4 w-4" />
                 Nuevo Examen
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/exams/assignments">
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Asignaciones
               </Link>
             </Button>
           </div>

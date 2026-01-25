@@ -44,22 +44,22 @@ const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string; bg:
   5: { label: "Excelente", color: "text-green-600", bg: "bg-green-50" },
 }
 
-// Assignment with embedded info for display
+// Assignment with embedded info for display (new backend format)
 interface AssignmentWithDetails {
   id: string
+  examId: string
+  examTitle: string
+  studentId: string
+  studentName: string
+  studentEmail: string
+  magicToken: string
+  magicLink: string
   status: "pending" | "in_progress" | "submitted" | "graded"
   assignedAt: string
+  startedAt: string | null
   submittedAt: string | null
-  student: {
-    id: string
-    fullName: string
-    email: string
-    career?: string | null
-  }
-  exam: {
-    id: string
-    title: string
-  }
+  score: number | null
+  studentGroupId?: string
   grade?: GradeWithDetails | null
 }
 
@@ -168,9 +168,9 @@ export default function GradesPage() {
     if (search) {
       const searchLower = search.toLowerCase()
       result = result.filter((a) => {
-        const matchesName = a.student.fullName.toLowerCase().includes(searchLower)
-        const matchesEmail = a.student.email.toLowerCase().includes(searchLower)
-        const matchesExam = a.exam.title.toLowerCase().includes(searchLower)
+        const matchesName = a.studentName?.toLowerCase().includes(searchLower)
+        const matchesEmail = a.studentEmail?.toLowerCase().includes(searchLower)
+        const matchesExam = a.examTitle?.toLowerCase().includes(searchLower)
         return matchesName || matchesEmail || matchesExam
       })
     }
@@ -186,7 +186,7 @@ export default function GradesPage() {
 
       switch (sortField) {
         case "name":
-          comparison = a.student.fullName.localeCompare(b.student.fullName)
+          comparison = (a.studentName || "").localeCompare(b.studentName || "")
           break
         case "status":
           // submitted before graded (pending review first)
@@ -516,11 +516,11 @@ export default function GradesPage() {
                       }`}
                     >
                       <div className="col-span-3">
-                        <p className="font-medium text-gray-900">{assignment.student.fullName}</p>
-                        <p className="text-xs text-gray-500">{assignment.student.email}</p>
+                        <p className="font-medium text-gray-900">{assignment.studentName}</p>
+                        <p className="text-xs text-gray-500">{assignment.studentEmail}</p>
                       </div>
                       <div className="col-span-3 flex items-center text-gray-700">
-                        {assignment.exam.title}
+                        {assignment.examTitle}
                       </div>
                       <div className="col-span-2 flex items-center">
                         {getStatusBadge(assignment.status)}

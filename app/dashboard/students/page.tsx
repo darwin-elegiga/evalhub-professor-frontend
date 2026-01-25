@@ -1089,8 +1089,8 @@ export default function StudentsPage() {
                         </Popover>
                       ) : (
                         <div
-                          className="flex flex-wrap gap-1 cursor-pointer min-h-[28px] items-center"
-                          onDoubleClick={() =>
+                          className="group/groups flex flex-wrap gap-1 cursor-pointer min-h-[28px] items-center"
+                          onClick={() =>
                             startEditing(
                               student.id,
                               "group",
@@ -1110,8 +1110,9 @@ export default function StudentsPage() {
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-gray-400 text-xs">—</span>
+                            <span className="text-gray-400 text-xs">Sin grupo</span>
                           )}
+                          <Pencil className="h-3 w-3 text-gray-400 opacity-0 group-hover/groups:opacity-100 transition-opacity ml-1" />
                         </div>
                       )}
                     </div>

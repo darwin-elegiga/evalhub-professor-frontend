@@ -129,14 +129,16 @@ export function AppSidebar() {
     >
       <SidebarHeader className="border-b border-gray-100">
         <Link href="/dashboard" className="flex h-8 items-center" onClick={handleNavigation}>
+          {/* Ícono pequeño - solo visible cuando sidebar está colapsado */}
           <Image
             src="/isotipo.png"
             alt="EVALHUB"
             width={32}
             height={32}
-            className="hidden h-8 w-8 shrink-0 object-contain transition-transform duration-200 md:block"
+            className="hidden h-8 w-8 shrink-0 object-contain transition-all duration-200 md:block md:group-data-[state=expanded]:w-0 md:group-data-[state=expanded]:opacity-0"
           />
-          <span className="overflow-hidden transition-all duration-200 ease-linear md:ml-2 md:group-data-[collapsible=icon]:ml-0 md:group-data-[collapsible=icon]:w-0 md:group-data-[collapsible=icon]:opacity-0">
+          {/* Logo grande - visible cuando sidebar está expandido */}
+          <span className="overflow-hidden transition-all duration-200 ease-linear md:group-data-[collapsible=icon]:w-0 md:group-data-[collapsible=icon]:opacity-0">
             <Image
               src="/logotipo.png"
               alt="EVALHUB"

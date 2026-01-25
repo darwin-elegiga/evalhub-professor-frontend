@@ -163,6 +163,13 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoading) {
+                      e.preventDefault()
+                      const form = e.currentTarget.closest("form")
+                      form?.requestSubmit()
+                    }
+                  }}
                   className="h-12 px-4 pr-12 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   disabled={isLoading}
                 />

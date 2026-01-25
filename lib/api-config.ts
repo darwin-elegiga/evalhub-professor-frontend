@@ -1,6 +1,6 @@
 // Configuración de la API del backend NestJS
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/",
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || "https://evalhub-backend.onrender.com/",
   ENDPOINTS: {
     // Auth
     LOGIN: "/auth/login",

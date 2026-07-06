@@ -7,7 +7,7 @@ import Placeholder from "@tiptap/extension-placeholder"
 import Mathematics from "@tiptap/extension-mathematics"
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight"
 import { common, createLowlight } from "lowlight"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Bold,
@@ -33,6 +33,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { apiClient } from "@/lib/api-client"
+import { API_CONFIG } from "@/lib/api-config"
+import { toast } from "sonner"
 
 // Create lowlight instance with common languages
 const lowlight = createLowlight(common)
@@ -80,12 +83,34 @@ function MenuButton({ onClick, isActive, disabled, tooltip, children }: MenuButt
 }
 
 function MenuBar({ editor }: { editor: Editor | null }) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const addImage = useCallback(() => {
-    const url = window.prompt("URL de la imagen:")
-    if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run()
-    }
-  }, [editor])
+    // Abre el selector de archivos: se sube la imagen y se inserta en el enunciado.
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleImageUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file || !editor) return
+      try {
+        const form = new FormData()
+        form.append("file", file)
+        const res = await apiClient.upload<{ url: string }>(
+          API_CONFIG.ENDPOINTS.UPLOADS,
+          form
+        )
+        editor.chain().focus().setImage({ src: res.url }).run()
+      } catch (err) {
+        console.error("Error uploading image:", err)
+        toast.error("No se pudo subir la imagen")
+      } finally {
+        e.target.value = ""
+      }
+    },
+    [editor]
+  )
 
   const insertInlineMath = useCallback(() => {
     const latex = window.prompt("Ecuación LaTeX (ej: E = mc^2):")
@@ -191,9 +216,16 @@ function MenuBar({ editor }: { editor: Editor | null }) {
           >
             <Minus className="h-4 w-4" />
           </MenuButton>
-          <MenuButton onClick={addImage} tooltip="Insertar imagen">
+          <MenuButton onClick={addImage} tooltip="Insertar imagen (subir archivo)">
             <ImageIcon className="h-4 w-4" />
           </MenuButton>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={handleImageUpload}
+          />
           <MenuButton onClick={insertInlineMath} tooltip="Insertar ecuación LaTeX">
             <Sigma className="h-4 w-4" />
           </MenuButton>

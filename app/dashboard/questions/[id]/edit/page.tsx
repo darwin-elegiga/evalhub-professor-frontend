@@ -862,6 +862,23 @@ export default function EditQuestionPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {problemSel !== "none" &&
+                problemSel !== "new" &&
+                (() => {
+                  const p = existingProblems.find((x) => x.key === problemSel)
+                  if (!p?.statement) return null
+                  return (
+                    <div className="rounded-lg border bg-muted/40 p-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Enunciado del problema (con su figura)
+                      </p>
+                      <div
+                        className="prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: p.statement }}
+                      />
+                    </div>
+                  )
+                })()}
               {problemSel === "new" && (
                 <div className="space-y-2">
                   <Label>Enunciado del problema (compartido)</Label>

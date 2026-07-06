@@ -8,7 +8,7 @@ import type { Subject, QuestionTopic, BankQuestion, QuestionType, QuestionDiffic
 import { ArrowLeft, Edit, Clock, Scale, CheckCircle2, XCircle, Info } from "lucide-react"
 import { GraphViewer, type GraphConfig } from "@/components/graph-editor"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
@@ -76,7 +76,8 @@ export default function QuestionDetailPage() {
       let topicData: QuestionTopic | null = null
 
       const qRes = await authFetch(`/api/questions/${questionId}`)
-      questionData = await qRes.json()
+      // Si la pregunta no existe (p. ej. ID antiguo tras re-montar), no la tratamos como válida
+      questionData = qRes.ok ? await qRes.json() : null
 
       if (questionData?.subjectId) {
         const subjectsRes = await authFetch("/api/subjects")
@@ -221,6 +222,42 @@ export default function QuestionDetailPage() {
   const renderGraphConfig = () => {
     const config = question.typeConfig as any
     if (!config) return null
+
+    // Modo imagen: el alumno hace clic sobre la figura; mostramos la zona correcta.
+    if (config.graphType === "image" && config.imageUrl) {
+      const area = config.correctArea
+      return (
+        <div className="space-y-3">
+          <h4 className="font-medium text-gray-700">
+            Imagen (el alumno hace clic para responder):
+          </h4>
+          <div className="relative inline-block overflow-hidden rounded-lg border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={config.imageUrl}
+              alt="Imagen de la pregunta"
+              className="block max-w-full"
+            />
+            {area && (
+              <div
+                className="pointer-events-none absolute border-2 border-emerald-500 bg-emerald-500/20"
+                style={{
+                  left: `${Math.min(area.x1, area.x2) * 100}%`,
+                  top: `${Math.min(area.y1, area.y2) * 100}%`,
+                  width: `${Math.abs(area.x2 - area.x1) * 100}%`,
+                  height: `${Math.abs(area.y2 - area.y1) * 100}%`,
+                }}
+              />
+            )}
+          </div>
+          {area && (
+            <p className="text-sm text-emerald-600">
+              Zona correcta marcada en verde.
+            </p>
+          )}
+        </div>
+      )
+    }
 
     // Build GraphConfig from typeConfig
     const graphConfig: GraphConfig = {
@@ -451,9 +488,9 @@ export default function QuestionDetailPage() {
                   <span>Promedio: {(question.averageScore * 100).toFixed(0)}%</span>
                 )}
               </div>
-              {question.tags.length > 0 && (
+              {(question.tags?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-2 mt-4">
-                  {question.tags.map((tag) => (
+                  {question.tags?.map((tag) => (
                     <Badge key={tag} variant="outline" className="text-xs">
                       #{tag}
                     </Badge>
@@ -467,12 +504,34 @@ export default function QuestionDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Enunciado</CardTitle>
+              {question.groupLabel && (
+                <CardDescription>Inciso {question.groupLabel})</CardDescription>
+              )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {question.groupStatement && (
+                <div className="rounded-lg border bg-muted/40 p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Contexto del problema
+                  </p>
+                  <div
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: question.groupStatement }}
+                  />
+                </div>
+              )}
               <div
                 className="prose prose-sm max-w-none"
                 dangerouslySetInnerHTML={{ __html: question.content }}
               />
+              {question.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={question.imageUrl}
+                  alt="Imagen de apoyo"
+                  className="max-w-full rounded-lg border"
+                />
+              )}
             </CardContent>
           </Card>
 

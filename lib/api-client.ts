@@ -175,8 +175,8 @@ export const apiClient = {
 // Client-side fetch helper for internal API routes (automatically includes auth token)
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const token = getToken()
-  const headers: HeadersInit = {
-    ...options.headers,
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
   }
   if (token) {
     headers["Authorization"] = `Bearer ${token}`

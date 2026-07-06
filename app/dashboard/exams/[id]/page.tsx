@@ -18,6 +18,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   graph_click: "Click en Gráfico",
   image_hotspot: "Zona en Imagen",
   open_text: "Respuesta Abierta",
+  diagram: "Diagrama",
 }
 
 const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {

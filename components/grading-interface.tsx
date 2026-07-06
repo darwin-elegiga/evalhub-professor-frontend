@@ -328,11 +328,12 @@ export function GradingInterface({
       }
 
       case "numeric": {
-        const correctAnswer = typeConfig.correctAnswer as number | undefined
+        const correctAnswer = (typeConfig.correctValue ??
+          typeConfig.correctAnswer) as number | undefined
         const tolerance = typeConfig.tolerance as number | undefined
         const studentAnswer = answer.answerNumeric
 
-        const isCorrect = correctAnswer !== undefined && studentAnswer !== undefined
+        const isCorrect = correctAnswer !== undefined && studentAnswer != null
           ? Math.abs(studentAnswer - correctAnswer) <= (tolerance || 0)
           : false
 

@@ -21,6 +21,7 @@ import type {
 } from "@/lib/types"
 import { ArrowLeft, Plus, Trash2, Save, GripVertical, MousePointer, Eye, Upload, ImageIcon } from "lucide-react"
 import { GraphEditor, type GraphConfig } from "@/components/graph-editor"
+import { ImageAreaPicker, type CorrectArea } from "@/components/image-area-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -141,6 +142,12 @@ export default function EditQuestionPage() {
   const [diagramReferenceUrl, setDiagramReferenceUrl] = useState<string | null>(null)
   const [isUploadingReference, setIsUploadingReference] = useState(false)
 
+  // Graph_click con imagen: el profesor marca una zona rectangular correcta
+  const [graphSource, setGraphSource] = useState<"cartesian" | "image">("cartesian")
+  const [graphImageUrl, setGraphImageUrl] = useState<string | null>(null)
+  const [graphArea, setGraphArea] = useState<CorrectArea | null>(null)
+  const [isUploadingGraphImage, setIsUploadingGraphImage] = useState(false)
+
   // Tags state
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>([])
@@ -255,6 +262,11 @@ export default function EditQuestionPage() {
           setNumericUnit(config.unit || "")
         } else if (questionData.questionType === "graph_click" && questionData.typeConfig) {
           const config = questionData.typeConfig as any
+          if (config.graphType === "image") {
+            setGraphSource("image")
+            setGraphImageUrl(config.imageUrl ?? null)
+            setGraphArea(config.correctArea ?? null)
+          } else {
           setGraphConfig({
             xRange: config.xRange || [-10, 10],
             yRange: config.yRange || [-10, 10],
@@ -272,6 +284,7 @@ export default function EditQuestionPage() {
             correctFunctionId: config.correctFunctionId,
             correctArea: config.correctArea,
           })
+          }
         } else if (questionData.questionType === "diagram" && questionData.typeConfig) {
           const config = questionData.typeConfig as any
           setDiagramReferenceUrl(config.referenceImageUrl ?? null)
@@ -334,6 +347,22 @@ export default function EditQuestionPage() {
     }
   }
 
+  const handleGraphImageUploadFile = async (file: File) => {
+    setIsUploadingGraphImage(true)
+    try {
+      const form = new FormData()
+      form.append("file", file)
+      const res = await apiClient.upload<{ url: string }>(API_CONFIG.ENDPOINTS.UPLOADS, form)
+      setGraphImageUrl(res.url)
+      toast.success("Imagen subida")
+    } catch (error) {
+      console.error("Error uploading graph image:", error)
+      toast.error("No se pudo subir la imagen")
+    } finally {
+      setIsUploadingGraphImage(false)
+    }
+  }
+
   const onSubmit = async (data: QuestionFormData) => {
     setIsSubmitting(true)
 
@@ -368,39 +397,59 @@ export default function EditQuestionPage() {
           showUnitInput: false,
         }
       } else if (data.question_type === "graph_click") {
-        // Validate graph config if interactive
-        if (graphConfig.isInteractive) {
-          const hasValidAnswer =
-            (graphConfig.answerType === "point" && graphConfig.correctPoint) ||
-            (graphConfig.answerType === "function" && graphConfig.correctFunctionId) ||
-            (graphConfig.answerType === "area" && graphConfig.correctArea) ||
-            (!graphConfig.answerType && graphConfig.correctPoint)
-
-          if (!hasValidAnswer) {
-            toast.error("Debes definir la respuesta correcta para preguntas interactivas")
+        if (graphSource === "image") {
+          if (!graphImageUrl) {
+            toast.error("Sube una imagen para la pregunta")
             setIsSubmitting(false)
             return
           }
-        }
+          if (!graphArea) {
+            toast.error("Marca la zona correcta arrastrando sobre la imagen")
+            setIsSubmitting(false)
+            return
+          }
+          typeConfig = {
+            graphType: "image",
+            imageUrl: graphImageUrl,
+            isInteractive: true,
+            answerType: "area",
+            correctArea: graphArea,
+          }
+        } else {
+          // Validate graph config if interactive
+          if (graphConfig.isInteractive) {
+            const hasValidAnswer =
+              (graphConfig.answerType === "point" && graphConfig.correctPoint) ||
+              (graphConfig.answerType === "function" && graphConfig.correctFunctionId) ||
+              (graphConfig.answerType === "area" && graphConfig.correctArea) ||
+              (!graphConfig.answerType && graphConfig.correctPoint)
 
-        typeConfig = {
-          graphType: "cartesian",
-          imageUrl: null,
-          correctPoint: graphConfig.correctPoint || { x: 0, y: 0 },
-          toleranceRadius: graphConfig.toleranceRadius,
-          xRange: graphConfig.xRange,
-          yRange: graphConfig.yRange,
-          xLabel: graphConfig.xLabel,
-          yLabel: graphConfig.yLabel,
-          title: graphConfig.title,
-          showGrid: graphConfig.showGrid,
-          gridStep: graphConfig.gridStep,
-          lines: graphConfig.lines,
-          functions: graphConfig.functions,
-          isInteractive: graphConfig.isInteractive,
-          answerType: graphConfig.answerType,
-          correctFunctionId: graphConfig.correctFunctionId,
-          correctArea: graphConfig.correctArea,
+            if (!hasValidAnswer) {
+              toast.error("Debes definir la respuesta correcta para preguntas interactivas")
+              setIsSubmitting(false)
+              return
+            }
+          }
+
+          typeConfig = {
+            graphType: "cartesian",
+            imageUrl: null,
+            correctPoint: graphConfig.correctPoint || { x: 0, y: 0 },
+            toleranceRadius: graphConfig.toleranceRadius,
+            xRange: graphConfig.xRange,
+            yRange: graphConfig.yRange,
+            xLabel: graphConfig.xLabel,
+            yLabel: graphConfig.yLabel,
+            title: graphConfig.title,
+            showGrid: graphConfig.showGrid,
+            gridStep: graphConfig.gridStep,
+            lines: graphConfig.lines,
+            functions: graphConfig.functions,
+            isInteractive: graphConfig.isInteractive,
+            answerType: graphConfig.answerType,
+            correctFunctionId: graphConfig.correctFunctionId,
+            correctArea: graphConfig.correctArea,
+          }
         }
       } else if (data.question_type === "diagram") {
         typeConfig = {
@@ -904,6 +953,47 @@ export default function EditQuestionPage() {
 
                     {/* Graph Click Config */}
                     <TabsContent value="graph_click" className="space-y-4 mt-4">
+                      {/* Fuente: gráfico cartesiano o imagen con zona correcta */}
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm text-gray-600">Fuente:</Label>
+                        <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
+                          <button
+                            type="button"
+                            onClick={() => setGraphSource("cartesian")}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                              graphSource === "cartesian"
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            Cartesiano
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setGraphSource("image")}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                              graphSource === "image"
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            Imagen (marcar zona)
+                          </button>
+                        </div>
+                      </div>
+
+                      {graphSource === "image" && (
+                        <ImageAreaPicker
+                          imageUrl={graphImageUrl}
+                          correctArea={graphArea}
+                          onAreaChange={setGraphArea}
+                          onUpload={handleGraphImageUploadFile}
+                          uploading={isUploadingGraphImage}
+                        />
+                      )}
+
+                      {graphSource === "cartesian" && (
+                      <>
                       {/* Mode Selector - Minimal */}
                       <div className="flex items-center gap-3">
                         <Label className="text-sm text-gray-600">Modo:</Label>
@@ -990,6 +1080,8 @@ export default function EditQuestionPage() {
                             Configura en la pestaña "Respuesta"
                           </span>
                         </div>
+                      )}
+                      </>
                       )}
                     </TabsContent>
 

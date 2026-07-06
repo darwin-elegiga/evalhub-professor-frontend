@@ -152,6 +152,14 @@ export default function EditQuestionPage() {
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>([])
 
+  // Incisos: asociar la pregunta a un problema (grupo)
+  const [problemSel, setProblemSel] = useState<string>("none")
+  const [newProblemStatement, setNewProblemStatement] = useState("")
+  const [incisoLabel, setIncisoLabel] = useState("")
+  const [existingProblems, setExistingProblems] = useState<
+    { key: string; statement: string; count: number }[]
+  >([])
+
   // Time input state (to allow free typing)
   const [timeInputStr, setTimeInputStr] = useState("5")
 
@@ -220,6 +228,36 @@ export default function EditQuestionPage() {
       setSubjects(subjectsData)
       setTopics(topicsData)
       setQuestion(questionData)
+
+      // Hidratar el grupo actual y cargar problemas existentes
+      if (questionData?.groupKey) {
+        setProblemSel(questionData.groupKey)
+        setIncisoLabel(questionData.groupLabel || "")
+      }
+      try {
+        const qs = await apiClient.get<BankQuestion[]>(
+          API_CONFIG.ENDPOINTS.QUESTIONS
+        )
+        const map = new Map<
+          string,
+          { key: string; statement: string; count: number }
+        >()
+        qs.forEach((q) => {
+          if (q.groupKey) {
+            const e = map.get(q.groupKey)
+            if (e) e.count++
+            else
+              map.set(q.groupKey, {
+                key: q.groupKey,
+                statement: q.groupStatement || "",
+                count: 1,
+              })
+          }
+        })
+        setExistingProblems([...map.values()])
+      } catch {
+        /* opcional */
+      }
 
       if (questionData) {
         // Populate form with existing data
@@ -459,6 +497,21 @@ export default function EditQuestionPage() {
         }
       }
 
+      // Agrupación por problema (incisos)
+      let groupKey: string | null = null
+      let groupStatement: string | null = null
+      let groupLabel: string | null = null
+      if (problemSel === "new") {
+        groupKey = crypto.randomUUID()
+        groupStatement = newProblemStatement || null
+        groupLabel = incisoLabel || null
+      } else if (problemSel !== "none") {
+        groupKey = problemSel
+        groupStatement =
+          existingProblems.find((p) => p.key === problemSel)?.statement || null
+        groupLabel = incisoLabel || null
+      }
+
       // Build payload with camelCase for backend
       const questionData = {
         title: data.title,
@@ -471,6 +524,9 @@ export default function EditQuestionPage() {
         weight: data.weight,
         tags,
         typeConfig,
+        groupKey,
+        groupStatement,
+        groupLabel,
       }
 
       await authFetch(`/api/questions/${questionId}`, {
@@ -774,6 +830,60 @@ export default function EditQuestionPage() {
               />
               {errors.content && (
                 <p className="text-sm text-red-500 mt-2">{errors.content.message}</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Problema / Incisos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Problema / Incisos</CardTitle>
+              <CardDescription>
+                Asocia esta pregunta a un problema con incisos (a, b, c).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Problema</Label>
+                <Select value={problemSel} onValueChange={setProblemSel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ninguno (pregunta suelta)</SelectItem>
+                    {existingProblems.map((p) => (
+                      <SelectItem key={p.key} value={p.key}>
+                        {p.statement.replace(/<[^>]+>/g, " ").trim().slice(0, 45) ||
+                          "Problema sin enunciado"}{" "}
+                        ({p.count} incisos)
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="new">➕ Nuevo problema</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {problemSel === "new" && (
+                <div className="space-y-2">
+                  <Label>Enunciado del problema (compartido)</Label>
+                  <textarea
+                    value={newProblemStatement}
+                    onChange={(e) => setNewProblemStatement(e.target.value)}
+                    placeholder="Enunciado común que verán todos los incisos…"
+                    className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              )}
+              {problemSel !== "none" && (
+                <div className="space-y-2">
+                  <Label>Inciso (letra)</Label>
+                  <Input
+                    value={incisoLabel}
+                    onChange={(e) => setIncisoLabel(e.target.value)}
+                    placeholder="a"
+                    maxLength={3}
+                    className="w-24"
+                  />
+                </div>
               )}
             </CardContent>
           </Card>

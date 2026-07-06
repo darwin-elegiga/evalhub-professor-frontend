@@ -190,12 +190,21 @@ export default function ExamDetailsPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Preguntas</CardTitle>
+              <CardTitle className="text-sm font-medium">Problemas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {exam.questions?.length || 0}
+                {exam.questions
+                  ? new Set(
+                      exam.questions.map(
+                        (eq) => eq.question.groupKey || eq.question.id
+                      )
+                    ).size
+                  : 0}
               </div>
+              <p className="text-xs text-muted-foreground">
+                {exam.questions?.length || 0} incisos
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -211,46 +220,90 @@ export default function ExamDetailsPage() {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">Preguntas</h2>
           {exam.questions && exam.questions.length > 0 ? (
-            exam.questions
-              .sort((a, b) => a.questionOrder - b.questionOrder)
-              .map((examQuestion, index) => {
-                const question = examQuestion.question
-
-                return (
-                  <Link
-                    key={examQuestion.id}
-                    href={`/dashboard/questions/${question.id}`}
-                    className="block"
-                  >
-                    <Card className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all">
-                      <CardHeader className="p-4 sm:p-6">
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-base sm:text-lg">
-                              Pregunta {index + 1}: {question.title}
-                            </CardTitle>
-                            <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <Badge variant="outline" className="text-xs">
-                              {QUESTION_TYPE_LABELS[question.questionType]}
-                            </Badge>
-                            <Badge className={DIFFICULTY_COLORS[question.difficulty]}>
-                              {DIFFICULTY_LABELS[question.difficulty]}
-                            </Badge>
-                            <Badge>Peso: {examQuestion.weight}</Badge>
-                          </div>
-                        </div>
-                        <CardDescription className="line-clamp-2 mt-2">
-                          <span
-                            dangerouslySetInnerHTML={{ __html: question.content }}
-                          />
-                        </CardDescription>
-                      </CardHeader>
-                    </Card>
-                  </Link>
-                )
-              })
+            (() => {
+              // Agrupa los incisos en problemas por groupKey
+              const sorted = [...exam.questions].sort(
+                (a, b) => a.questionOrder - b.questionOrder
+              )
+              const problems: {
+                key: string
+                statement: string | null
+                items: ExamQuestion[]
+              }[] = []
+              for (const eq of sorted) {
+                const key = eq.question.groupKey || eq.question.id
+                const last = problems[problems.length - 1]
+                if (last && last.key === key) last.items.push(eq)
+                else
+                  problems.push({
+                    key,
+                    statement: eq.question.groupStatement || null,
+                    items: [eq],
+                  })
+              }
+              return problems.map((problem, pIdx) => (
+                <div key={problem.key} className="space-y-2">
+                  {problem.items.length > 1 && (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Problema {pIdx + 1} · {problem.items.length} incisos
+                      </span>
+                      {problem.statement && (
+                        <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                          {problem.statement
+                            .replace(/<[^>]+>/g, " ")
+                            .trim()
+                            .slice(0, 160)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {problem.items.map((examQuestion) => {
+                    const question = examQuestion.question
+                    return (
+                      <Link
+                        key={examQuestion.id}
+                        href={`/dashboard/questions/${question.id}`}
+                        className="block"
+                      >
+                        <Card className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all">
+                          <CardHeader className="p-4 sm:p-6">
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <CardTitle className="text-base sm:text-lg">
+                                  {question.groupLabel
+                                    ? `${question.groupLabel}) ${question.title}`
+                                    : `Problema ${pIdx + 1}: ${question.title}`}
+                                </CardTitle>
+                                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 mt-1" />
+                              </div>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Badge variant="outline" className="text-xs">
+                                  {QUESTION_TYPE_LABELS[question.questionType]}
+                                </Badge>
+                                <Badge
+                                  className={DIFFICULTY_COLORS[question.difficulty]}
+                                >
+                                  {DIFFICULTY_LABELS[question.difficulty]}
+                                </Badge>
+                                <Badge>Peso: {examQuestion.weight}</Badge>
+                              </div>
+                            </div>
+                            <CardDescription className="line-clamp-2 mt-2">
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: question.content,
+                                }}
+                              />
+                            </CardDescription>
+                          </CardHeader>
+                        </Card>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))
+            })()
           ) : (
             <Card>
               <CardContent className="flex h-32 items-center justify-center">

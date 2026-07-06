@@ -136,6 +136,12 @@ export interface BankQuestion {
   title: string // Título corto para identificación
   content: string // HTML del editor Tiptap (enunciado completo)
 
+  // Agrupación en problemas con incisos (a, b, c)
+  groupKey?: string | null // problema al que pertenece
+  groupStatement?: string | null // enunciado compartido del problema
+  groupLabel?: string | null // letra del inciso
+  imageUrl?: string | null // imagen de apoyo del enunciado
+
   // Tipo y configuración
   questionType: QuestionType
   typeConfig: QuestionConfig["config"]

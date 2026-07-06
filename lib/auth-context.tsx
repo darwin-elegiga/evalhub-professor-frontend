@@ -117,8 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {
           email,
           password,
+          rememberMe,
         }
       );
+      // Limpiar tokens previos de ambos storages para que la elección de
+      // "recordar sesión" no quede eclipsada por un token viejo en localStorage.
+      removeStorageItem("auth_token");
+      removeStorageItem("refresh_token");
       setStorageItem("auth_token", response.tokens.accessToken, rememberMe);
       setStorageItem("refresh_token", response.tokens.refreshToken, rememberMe);
       setUser(mapAuthResponseToTeacher(response));

@@ -247,6 +247,30 @@ export default function QuestionBankPage() {
     return matchesSearch;
   });
 
+  // Agrupa las preguntas en "problemas" por groupKey (incisos a, b, c).
+  const groupedProblems = (() => {
+    const map = new Map<
+      string,
+      { key: string; statement: string | null; items: BankQuestion[] }
+    >();
+    const order: string[] = [];
+    for (const q of filteredQuestions) {
+      const key = q.groupKey || q.id;
+      if (!map.has(key)) {
+        map.set(key, { key, statement: q.groupStatement || null, items: [] });
+        order.push(key);
+      }
+      map.get(key)!.items.push(q);
+    }
+    const groups = order.map((k) => map.get(k)!);
+    groups.forEach((g) =>
+      g.items.sort((a, b) =>
+        (a.groupLabel || "").localeCompare(b.groupLabel || "")
+      )
+    );
+    return groups;
+  })();
+
   if (loadingData) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -382,12 +406,26 @@ export default function QuestionBankPage() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {filteredQuestions.map((question) => {
-              const subject = getSubjectById(question.subjectId);
+            {groupedProblems.map((problem, pIdx) => (
+              <div key={problem.key} className="grid gap-2">
+                {problem.items.length > 1 && (
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Problema {pIdx + 1} · {problem.items.length} incisos
+                    </span>
+                    {problem.statement && (
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                        {problem.statement.replace(/<[^>]+>/g, " ").trim().slice(0, 160)}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {problem.items.map((question) => {
+                  const subject = getSubjectById(question.subjectId);
 
-              return (
-                <Card
-                  key={question.id}
+                  return (
+                    <Card
+                      key={question.id}
                   className="border-gray-200 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
                   onClick={() =>
                     router.push(`/dashboard/questions/${question.id}`)
@@ -397,6 +435,11 @@ export default function QuestionBankPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <CardTitle className="text-lg">
+                          {question.groupLabel ? (
+                            <span className="mr-1 font-semibold text-gray-500">
+                              {question.groupLabel})
+                            </span>
+                          ) : null}
                           {question.title}
                         </CardTitle>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -499,7 +542,9 @@ export default function QuestionBankPage() {
                   </CardContent>
                 </Card>
               );
-            })}
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>

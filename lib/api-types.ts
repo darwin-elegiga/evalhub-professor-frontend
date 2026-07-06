@@ -102,6 +102,7 @@ export interface GradingQuestion {
     selectedOptionId?: string | null
     answerText?: string | null
     answerNumeric?: number | null
+    answerFiles?: Array<{ url: string; kind: string; mime?: string }> | null
     score?: number | null
     feedback?: string | null
   } | null

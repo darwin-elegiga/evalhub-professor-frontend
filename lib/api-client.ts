@@ -153,6 +153,23 @@ export const apiClient = {
 
   delete: <T>(endpoint: string) =>
     fetchApi<T>(endpoint, { method: 'DELETE' }),
+
+  // Sube un archivo (multipart) directo al backend. No usa fetchApi porque ese
+  // fuerza Content-Type: application/json; aquí dejamos que el navegador ponga
+  // el boundary de multipart. Adjunta el Bearer token igual que el resto.
+  upload: async <T>(endpoint: string, formData: FormData): Promise<T> => {
+    const token = getToken()
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formData,
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }))
+      throw new ApiError(response.status, error.message || `Error ${response.status}`)
+    }
+    return response.json()
+  },
 }
 
 // Client-side fetch helper for internal API routes (automatically includes auth token)

@@ -34,6 +34,9 @@ export const API_CONFIG = {
     QUESTIONS: "/questions",
     QUESTION_BY_ID: (id: string) => `/questions/${id}`,
 
+    // Uploads (imágenes: figura base de preguntas diagram)
+    UPLOADS: "/uploads",
+
     // Topics
     TOPICS: "/topics",
     TOPIC_BY_ID: (id: string) => `/topics/${id}`,

@@ -8,6 +8,7 @@ export type QuestionType =
   | "graph_click"        // Click en punto de gráfico
   | "image_hotspot"      // Marcar zona en imagen
   | "open_text"          // Respuesta abierta
+  | "diagram"            // Dibujar/marcar sobre una imagen base (Excalidraw) o subir foto
 
 export type QuestionDifficulty = "easy" | "medium" | "hard"
 
@@ -105,12 +106,21 @@ export interface OpenTextConfig {
   keywords: string[] // Palabras clave para auto-evaluación parcial
 }
 
+// El alumno dibuja/marca con Excalidraw sobre una imagen base (opcional) o sube una foto.
+// La corrección es manual.
+export interface DiagramConfig {
+  referenceImageUrl: string | null // Imagen base sobre la que dibujar/marcar
+  allowCanvas?: boolean // Habilitar el lienzo de dibujo
+  allowUpload?: boolean // Permitir subir foto de la respuesta a mano
+}
+
 export type QuestionConfig =
   | { type: "multiple_choice"; config: MultipleChoiceConfig }
   | { type: "numeric"; config: NumericConfig }
   | { type: "graph_click"; config: GraphClickConfig }
   | { type: "image_hotspot"; config: ImageHotspotConfig }
   | { type: "open_text"; config: OpenTextConfig }
+  | { type: "diagram"; config: DiagramConfig }
 
 // ============================================
 // QUESTION BANK

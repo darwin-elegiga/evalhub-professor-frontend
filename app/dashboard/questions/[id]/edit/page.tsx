@@ -1,7 +1,8 @@
 "use client"
 
 import { useAuth } from "@/lib/auth-context"
-import { authFetch } from "@/lib/api-client"
+import { authFetch, apiClient } from "@/lib/api-client"
+import { API_CONFIG } from "@/lib/api-config"
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useForm, Controller } from "react-hook-form"
@@ -16,8 +17,9 @@ import type {
   MultipleChoiceConfig,
   NumericConfig,
   GraphClickConfig,
+  DiagramConfig,
 } from "@/lib/types"
-import { ArrowLeft, Plus, Trash2, Save, GripVertical, MousePointer, Eye } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Save, GripVertical, MousePointer, Eye, Upload, ImageIcon } from "lucide-react"
 import { GraphEditor, type GraphConfig } from "@/components/graph-editor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -59,6 +61,12 @@ const QUESTION_TYPES: { value: QuestionType; label: string; description: string 
     label: "Respuesta Abierta",
     description: "El estudiante escribe una respuesta de texto libre",
   },
+  {
+    value: "diagram",
+    label: "Diagrama",
+    description:
+      "El estudiante dibuja/marca sobre una imagen base o sube una foto de su respuesta",
+  },
 ]
 
 const DIFFICULTY_OPTIONS: { value: QuestionDifficulty; label: string }[] = [
@@ -73,7 +81,7 @@ const questionSchema = z.object({
   content: z.string().min(1, "El enunciado es requerido"),
   subjectId: z.string().optional(),
   topicId: z.string().optional(),
-  question_type: z.enum(["multiple_choice", "numeric", "graph_click", "image_hotspot", "open_text"]),
+  question_type: z.enum(["multiple_choice", "numeric", "graph_click", "image_hotspot", "open_text", "diagram"]),
   difficulty: z.enum(["easy", "medium", "hard"]),
   estimated_time_minutes: z.number().min(1).max(120).optional(),
   weight: z.number().min(1).max(10),
@@ -128,6 +136,10 @@ export default function EditQuestionPage() {
     toleranceRadius: 0.5,
     isInteractive: false,
   })
+
+  // Diagram config state (imagen base sobre la que el alumno dibuja/marca)
+  const [diagramReferenceUrl, setDiagramReferenceUrl] = useState<string | null>(null)
+  const [isUploadingReference, setIsUploadingReference] = useState(false)
 
   // Tags state
   const [tagInput, setTagInput] = useState("")
@@ -260,6 +272,9 @@ export default function EditQuestionPage() {
             correctFunctionId: config.correctFunctionId,
             correctArea: config.correctArea,
           })
+        } else if (questionData.questionType === "diagram" && questionData.typeConfig) {
+          const config = questionData.typeConfig as any
+          setDiagramReferenceUrl(config.referenceImageUrl ?? null)
         }
       }
     } catch (error) {
@@ -300,12 +315,31 @@ export default function EditQuestionPage() {
     setValue("tags", newTags)
   }
 
+  const handleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploadingReference(true)
+    try {
+      const form = new FormData()
+      form.append("file", file)
+      const res = await apiClient.upload<{ url: string }>(API_CONFIG.ENDPOINTS.UPLOADS, form)
+      setDiagramReferenceUrl(res.url)
+      toast.success("Imagen base subida")
+    } catch (error) {
+      console.error("Error uploading reference image:", error)
+      toast.error("No se pudo subir la imagen")
+    } finally {
+      setIsUploadingReference(false)
+      e.target.value = ""
+    }
+  }
+
   const onSubmit = async (data: QuestionFormData) => {
     setIsSubmitting(true)
 
     try {
       // Build type config based on question type
-      let typeConfig: MultipleChoiceConfig | NumericConfig | GraphClickConfig | object = {}
+      let typeConfig: MultipleChoiceConfig | NumericConfig | GraphClickConfig | DiagramConfig | object = {}
 
       if (data.question_type === "multiple_choice") {
         const hasCorrect = mcOptions.some((opt) => opt.is_correct)
@@ -367,6 +401,12 @@ export default function EditQuestionPage() {
           answerType: graphConfig.answerType,
           correctFunctionId: graphConfig.correctFunctionId,
           correctArea: graphConfig.correctArea,
+        }
+      } else if (data.question_type === "diagram") {
+        typeConfig = {
+          referenceImageUrl: diagramReferenceUrl,
+          allowCanvas: true,
+          allowUpload: true,
         }
       }
 
@@ -701,7 +741,7 @@ export default function EditQuestionPage() {
                 control={control}
                 render={({ field }) => (
                   <Tabs value={field.value} onValueChange={field.onChange}>
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-5">
                       {QUESTION_TYPES.map((type) => (
                         <TabsTrigger key={type.value} value={type.value}>
                           {type.label}
@@ -958,6 +998,63 @@ export default function EditQuestionPage() {
                       <p className="text-muted-foreground">
                         Los estudiantes escribirán una respuesta libre. Deberás calificar manualmente.
                       </p>
+                    </TabsContent>
+
+                    {/* Diagram Config */}
+                    <TabsContent value="diagram" className="space-y-4 mt-4">
+                      <p className="text-sm text-muted-foreground">
+                        El estudiante dibujará/marcará sobre una imagen base (opcional) o podrá subir una
+                        foto de su respuesta hecha a mano. La corrección es manual.
+                      </p>
+
+                      <div className="space-y-2">
+                        <Label>Imagen base (opcional)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Sube la figura sobre la que el estudiante debe dibujar o marcar. Si no subes
+                          ninguna, dibujará sobre un lienzo en blanco.
+                        </p>
+
+                        {diagramReferenceUrl ? (
+                          <div className="space-y-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={diagramReferenceUrl}
+                              alt="Imagen base"
+                              className="max-h-64 rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDiagramReferenceUrl(null)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Quitar imagen
+                            </Button>
+                          </div>
+                        ) : (
+                          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-6 text-sm text-muted-foreground hover:bg-muted/50">
+                            {isUploadingReference ? (
+                              <>
+                                <Upload className="h-6 w-6 animate-pulse" />
+                                Subiendo…
+                              </>
+                            ) : (
+                              <>
+                                <ImageIcon className="h-6 w-6" />
+                                <span>Haz clic para subir una imagen (PNG, JPG, WebP)</span>
+                              </>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={isUploadingReference}
+                              onChange={handleReferenceUpload}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </TabsContent>
                   </Tabs>
                 )}

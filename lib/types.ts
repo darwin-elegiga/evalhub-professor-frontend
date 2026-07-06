@@ -38,6 +38,7 @@ export type {
   GraphClickConfig,
   ImageHotspotConfig,
   OpenTextConfig,
+  DiagramConfig,
   QuestionConfig,
   BankQuestion,
   ExamQuestion,

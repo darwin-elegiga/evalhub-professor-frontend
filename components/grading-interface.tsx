@@ -85,6 +85,7 @@ const QUESTION_TYPE_LABELS: Record<string, string> = {
   numeric: "Numérica",
   graph_click: "Click en Gráfico",
   open_text: "Respuesta Abierta",
+  diagram: "Diagrama",
 }
 
 // Event type configuration
@@ -364,6 +365,37 @@ export function GradingInterface({
             </div>
           </div>
         )
+
+      case "diagram": {
+        const files = (answer.answerFiles || []) as Array<{
+          url: string
+          kind: string
+        }>
+        const image = files.find((f) => f.kind === "image")
+        if (!image) {
+          return (
+            <div className="rounded-md border border-dashed bg-gray-50 p-4 text-center text-gray-500">
+              Sin respuesta
+            </div>
+          )
+        }
+        return (
+          <div className="space-y-2">
+            <div className="text-sm text-gray-500">Dibujo del estudiante:</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <a href={image.url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={image.url}
+                alt="Respuesta del estudiante"
+                className="max-w-full rounded-md border bg-white"
+              />
+            </a>
+            <p className="text-xs text-gray-400">
+              Haz clic en la imagen para verla a tamaño completo.
+            </p>
+          </div>
+        )
+      }
 
       default:
         return (

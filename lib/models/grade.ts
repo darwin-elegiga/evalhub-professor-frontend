@@ -14,6 +14,7 @@ export interface StudentAnswer {
   selectedOptionId: string | null
   answerText: string | null
   answerNumeric: number | null
+  answerFiles: Array<{ url: string; kind: string; mime?: string }> | null
   score: QuestionScore | null // Calificación por pregunta (2-5), null si no calificada
   feedback: string | null
   createdAt: string

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { API_CONFIG } from "@/lib/api-config";
 import { Button } from "@/components/ui/button";
+import { ImageWithSkeleton } from "@/components/image-with-skeleton";
 import { Label } from "@/components/ui/label";
 
 interface SupportImageFieldProps {
@@ -54,11 +55,11 @@ export function SupportImageField({ value, onChange }: SupportImageFieldProps) {
 
       {value ? (
         <div className="space-y-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <ImageWithSkeleton
             src={value}
             alt="Imagen de apoyo"
             className="max-h-64 rounded-lg border"
+            skeletonClassName="h-64 w-full max-w-md"
           />
           <Button
             type="button"

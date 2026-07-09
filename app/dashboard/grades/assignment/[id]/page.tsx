@@ -35,10 +35,18 @@ export default function GradingPage() {
   const loadData = async () => {
     try {
       const res = await authFetch(`/api/assignments/${assignmentId}/grading`)
+      if (res.status === 401) {
+        router.push("/auth/login")
+        return
+      }
+      if (!res.ok) {
+        throw new Error(`Grading request failed with status ${res.status}`)
+      }
       const data: GradingDataResponse = await res.json()
       setGradingData(data)
     } catch (error) {
       console.error("Error loading grading data:", error)
+      setGradingData(null)
     } finally {
       setLoadingData(false)
     }
@@ -84,10 +92,12 @@ export default function GradingPage() {
       <div className="container mx-auto p-6">
         <GradingInterface
           assignment={gradingData.assignment}
+          exam={gradingData.exam}
+          student={gradingData.student}
           questions={gradingData.questions}
           existingGrade={gradingData.existingGrade}
           teacherId={user.id}
-          examEvents={gradingData.examEvents}
+          examEvents={gradingData.events}
         />
       </div>
     </div>

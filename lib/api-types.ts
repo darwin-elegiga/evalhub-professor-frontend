@@ -9,7 +9,8 @@ import type {
   AnswerOption,
   StudentAnswer,
   Grade,
-  ExamEvent,
+  ExamEventType,
+  ExamEventSeverity,
   QuestionType,
 } from "./types"
 
@@ -76,15 +77,33 @@ export interface ExamTokenResponse {
 // ============================================
 
 /**
- * Assignment for grading with embedded info
+ * Assignment for grading. The backend returns `student` and `exam` as
+ * siblings of `assignment`, not nested inside it.
  */
 export interface GradingAssignment {
   id: string
+  examId: string
+  studentId: string
+  magicToken: string
+  magicLink: string
   status: "pending" | "in_progress" | "submitted" | "graded"
+  assignedAt: string
   startedAt?: string | null
   submittedAt?: string | null
-  student: EmbeddedStudent
-  exam: EmbeddedExamBasic
+  score?: number | null
+}
+
+/**
+ * Proctoring event as returned by the grading endpoint (camelCase),
+ * distinct from the snake_case `ExamEvent` used by the student-side event API.
+ */
+export interface GradingEvent {
+  id: string
+  assignmentId: string
+  eventType: ExamEventType
+  severity: ExamEventSeverity
+  timestamp: string
+  details: { message?: string; [key: string]: unknown } | null
 }
 
 /**
@@ -116,8 +135,9 @@ export interface GradingDataResponse {
   student: EmbeddedStudent
   exam: EmbeddedExamBasic
   questions: GradingQuestion[]
+  answers: StudentAnswer[]
+  events: GradingEvent[]
   existingGrade: Grade | null
-  examEvents?: ExamEvent[]
 }
 
 // ============================================

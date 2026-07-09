@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import type { MouseEvent as ReactMouseEvent } from "react"
 import { Upload, ImageIcon, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ImageWithSkeleton } from "@/components/image-with-skeleton"
 
 export interface CorrectArea {
   x1: number
@@ -125,11 +126,11 @@ export function ImageAreaPicker({
           if (start) finish()
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <ImageWithSkeleton
           src={imageUrl}
           alt="Zona correcta"
           className="block max-w-full pointer-events-none"
+          skeletonClassName="h-64 w-96 max-w-full rounded-none"
           draggable={false}
         />
         {drawing && (

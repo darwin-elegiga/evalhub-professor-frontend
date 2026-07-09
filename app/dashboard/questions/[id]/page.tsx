@@ -7,6 +7,7 @@ import { useRouter, useParams } from "next/navigation"
 import type { Subject, QuestionTopic, BankQuestion, QuestionType, QuestionDifficulty } from "@/lib/types"
 import { ArrowLeft, Edit, Clock, Scale, CheckCircle2, XCircle, Info } from "lucide-react"
 import { GraphViewer, type GraphConfig } from "@/components/graph-editor"
+import { ImageWithSkeleton } from "@/components/image-with-skeleton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -232,11 +233,11 @@ export default function QuestionDetailPage() {
             Imagen (el alumno hace clic para responder):
           </h4>
           <div className="relative inline-block overflow-hidden rounded-lg border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <ImageWithSkeleton
               src={config.imageUrl}
               alt="Imagen de la pregunta"
               className="block max-w-full"
+              skeletonClassName="h-64 w-96 max-w-full rounded-none"
             />
             {area && (
               <div
@@ -525,11 +526,11 @@ export default function QuestionDetailPage() {
                 dangerouslySetInnerHTML={{ __html: question.content }}
               />
               {question.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <ImageWithSkeleton
                   src={question.imageUrl}
                   alt="Imagen de apoyo"
                   className="max-w-full rounded-lg border"
+                  skeletonClassName="h-64 w-full"
                 />
               )}
             </CardContent>

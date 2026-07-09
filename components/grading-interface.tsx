@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ImageWithSkeleton } from "@/components/image-with-skeleton"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -45,22 +46,29 @@ import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
 import { API_CONFIG } from "@/lib/api-config"
 import type {
-  ExamEvent,
   ExamEventType,
   ExamEventSeverity,
   GradeRoundingMethod,
   FinalGrade,
   Grade,
 } from "@/lib/types"
-import type { GradingAssignment, GradingQuestion } from "@/lib/api-types"
+import type {
+  EmbeddedExamBasic,
+  EmbeddedStudent,
+  GradingAssignment,
+  GradingEvent,
+  GradingQuestion,
+} from "@/lib/api-types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface GradingInterfaceProps {
   assignment: GradingAssignment
+  exam: EmbeddedExamBasic
+  student: EmbeddedStudent
   questions: GradingQuestion[]
   existingGrade: Grade | null
   teacherId: string
-  examEvents?: ExamEvent[]
+  examEvents?: GradingEvent[]
 }
 
 // Score labels for 2-5 scale (same as final grade)
@@ -126,6 +134,8 @@ const SEVERITY_CONFIG: Record<
 
 export function GradingInterface({
   assignment,
+  exam,
+  student,
   questions,
   existingGrade,
   teacherId,
@@ -383,12 +393,12 @@ export function GradingInterface({
         return (
           <div className="space-y-2">
             <div className="text-sm text-gray-500">Dibujo del estudiante:</div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <a href={image.url} target="_blank" rel="noopener noreferrer">
-              <img
+              <ImageWithSkeleton
                 src={image.url}
                 alt="Respuesta del estudiante"
                 className="max-w-full rounded-md border bg-white"
+                skeletonClassName="h-64 w-full rounded-md"
               />
             </a>
             <p className="text-xs text-gray-400">
@@ -419,8 +429,8 @@ export function GradingInterface({
 
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{assignment.exam.title}</h1>
-            <p className="text-muted-foreground">Estudiante: {assignment.student.fullName}</p>
+            <h1 className="text-3xl font-bold text-gray-900">{exam.title}</h1>
+            <p className="text-muted-foreground">Estudiante: {student.fullName}</p>
           </div>
           <Badge
             variant={assignment.status === "graded" ? "default" : "secondary"}
@@ -551,7 +561,7 @@ export function GradingInterface({
                   {examEvents
                     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
                     .map((event) => {
-                      const config = EVENT_CONFIG[event.event_type]
+                      const config = EVENT_CONFIG[event.eventType]
                       const severityConfig = SEVERITY_CONFIG[event.severity]
                       const EventIcon = config?.icon || Info
                       const SeverityIcon = severityConfig?.icon || Info
@@ -570,7 +580,7 @@ export function GradingInterface({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className={`font-medium text-sm ${severityConfig?.color || "text-gray-600"}`}>
-                                {config?.label || event.event_type}
+                                {config?.label || event.eventType}
                               </span>
                               {event.severity !== "info" && (
                                 <SeverityIcon className={`h-3.5 w-3.5 ${severityConfig?.color || ""}`} />

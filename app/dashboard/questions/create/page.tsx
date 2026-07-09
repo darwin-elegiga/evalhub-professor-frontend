@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { GraphEditor, type GraphConfig } from "@/components/graph-editor";
 import { ImageAreaPicker, type CorrectArea } from "@/components/image-area-picker";
+import { ImageWithSkeleton } from "@/components/image-with-skeleton";
 import { SupportImageField } from "@/components/support-image-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1267,11 +1268,11 @@ export default function CreateQuestionPage() {
 
                         {diagramReferenceUrl ? (
                           <div className="space-y-2">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <ImageWithSkeleton
                               src={diagramReferenceUrl}
                               alt="Imagen base"
                               className="max-h-64 rounded-lg border"
+                              skeletonClassName="h-64 w-full max-w-md"
                             />
                             <Button
                               type="button"

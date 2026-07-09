@@ -23,7 +23,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Eye,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -32,7 +31,6 @@ import {
   ArrowDown,
   X,
   ClipboardList,
-  Pencil,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -484,7 +482,7 @@ export default function GradesPage() {
                   >
                     Estudiante <SortIcon field="name" />
                   </button>
-                  <div className="col-span-3">Examen</div>
+                  <div className="col-span-4">Examen</div>
                   <button
                     onClick={() => handleSort("status")}
                     className="col-span-2 flex items-center gap-1 hover:text-gray-900 transition-colors text-left"
@@ -503,14 +501,14 @@ export default function GradesPage() {
                   >
                     Nota <SortIcon field="grade" />
                   </button>
-                  <div className="col-span-1 text-right">Acción</div>
                 </div>
 
                 {/* Table Body */}
                 <div className="divide-y divide-gray-50">
                   {paginatedAssignments.map((assignment, index) => (
-                    <div
+                    <Link
                       key={assignment.id}
+                      href={`/dashboard/grades/assignment/${assignment.id}`}
                       className={`grid grid-cols-12 gap-2 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
                         index % 2 === 0 ? "bg-white" : "bg-gray-50/30"
                       }`}
@@ -519,7 +517,7 @@ export default function GradesPage() {
                         <p className="font-medium text-gray-900">{assignment.studentName}</p>
                         <p className="text-xs text-gray-500">{assignment.studentEmail}</p>
                       </div>
-                      <div className="col-span-3 flex items-center text-gray-700">
+                      <div className="col-span-4 flex items-center text-gray-700">
                         {assignment.examTitle}
                       </div>
                       <div className="col-span-2 flex items-center">
@@ -544,18 +542,7 @@ export default function GradesPage() {
                           <span className="text-gray-400">—</span>
                         )}
                       </div>
-                      <div className="col-span-1 flex items-center justify-end">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link href={`/dashboard/grades/assignment/${assignment.id}`}>
-                            {assignment.status === "submitted" ? (
-                              <Pencil className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
 

@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { serverFetch } from "@/lib/api-client"
-import { API_CONFIG } from "@/lib/api-config"
-
-interface GradingDataResponse {
-  assignment: any
-  student: any
-  exam: any
-  questions: any[]
-  answers: any[]
-  events: any[]
-  existingGrade: any | null
-}
+import { API_CONFIG, ApiError } from "@/lib/api-config"
+import type { GradingDataResponse } from "@/lib/api-types"
 
 // GET /api/assignments/[id]/grading - Get full grading data for an assignment
 export async function GET(
@@ -27,6 +18,9 @@ export async function GET(
     return NextResponse.json(response)
   } catch (error) {
     console.error("Error fetching grading data:", error)
-    return NextResponse.json({ error: "Error fetching grading data" }, { status: 500 })
+    // Preserve the backend status (401 expired session, 403, 404) so the page
+    // can tell "session expired" apart from "assignment missing".
+    const status = error instanceof ApiError ? error.status : 500
+    return NextResponse.json({ error: "Error fetching grading data" }, { status })
   }
 }

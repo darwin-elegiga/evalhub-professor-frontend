@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { GraphEditor, type GraphConfig } from "@/components/graph-editor";
 import { ImageAreaPicker, type CorrectArea } from "@/components/image-area-picker";
+import { SupportImageField } from "@/components/support-image-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -162,6 +163,9 @@ export default function CreateQuestionPage() {
     toleranceRadius: 0.5,
     isInteractive: false,
   });
+
+  // Imagen de apoyo del enunciado (campo imageUrl de la pregunta)
+  const [supportImageUrl, setSupportImageUrl] = useState<string | null>(null);
 
   // Diagram config state (imagen base sobre la que el alumno dibuja/marca)
   const [diagramReferenceUrl, setDiagramReferenceUrl] = useState<string | null>(
@@ -504,6 +508,7 @@ export default function CreateQuestionPage() {
         weight: data.weight,
         tags,
         typeConfig,
+        imageUrl: supportImageUrl,
         groupKey,
         groupStatement,
         groupLabel,
@@ -807,6 +812,13 @@ export default function CreateQuestionPage() {
                   {errors.content.message}
                 </p>
               )}
+
+              <div className="mt-6">
+                <SupportImageField
+                  value={supportImageUrl}
+                  onChange={setSupportImageUrl}
+                />
+              </div>
             </CardContent>
           </Card>
 

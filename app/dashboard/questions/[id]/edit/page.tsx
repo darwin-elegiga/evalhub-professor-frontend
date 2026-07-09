@@ -22,6 +22,7 @@ import type {
 import { ArrowLeft, Plus, Trash2, Save, GripVertical, MousePointer, Eye, Upload, ImageIcon } from "lucide-react"
 import { GraphEditor, type GraphConfig } from "@/components/graph-editor"
 import { ImageAreaPicker, type CorrectArea } from "@/components/image-area-picker"
+import { SupportImageField } from "@/components/support-image-field"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -137,6 +138,9 @@ export default function EditQuestionPage() {
     toleranceRadius: 0.5,
     isInteractive: false,
   })
+
+  // Imagen de apoyo del enunciado (campo imageUrl de la pregunta)
+  const [supportImageUrl, setSupportImageUrl] = useState<string | null>(null)
 
   // Diagram config state (imagen base sobre la que el alumno dibuja/marca)
   const [diagramReferenceUrl, setDiagramReferenceUrl] = useState<string | null>(null)
@@ -275,6 +279,7 @@ export default function EditQuestionPage() {
 
         setTags(questionData.tags)
         setTimeInputStr(String(questionData.estimatedTimeMinutes || 5))
+        setSupportImageUrl(questionData.imageUrl ?? null)
 
         // Populate type-specific config
         if (questionData.questionType === "multiple_choice" && questionData.typeConfig) {
@@ -524,6 +529,7 @@ export default function EditQuestionPage() {
         weight: data.weight,
         tags,
         typeConfig,
+        imageUrl: supportImageUrl,
         groupKey,
         groupStatement,
         groupLabel,
@@ -831,6 +837,10 @@ export default function EditQuestionPage() {
               {errors.content && (
                 <p className="text-sm text-red-500 mt-2">{errors.content.message}</p>
               )}
+
+              <div className="mt-6">
+                <SupportImageField value={supportImageUrl} onChange={setSupportImageUrl} />
+              </div>
             </CardContent>
           </Card>
 

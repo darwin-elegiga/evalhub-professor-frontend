@@ -69,6 +69,7 @@ interface GradingInterfaceProps {
   existingGrade: Grade | null
   teacherId: string
   examEvents?: GradingEvent[]
+  returnTo?: string
 }
 
 // Score labels for 2-5 scale (same as final grade)
@@ -140,6 +141,7 @@ export function GradingInterface({
   existingGrade,
   teacherId,
   examEvents = [],
+  returnTo = "/dashboard/grades",
 }: GradingInterfaceProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -263,7 +265,7 @@ export function GradingInterface({
       })
 
       toast.success("Calificación final enviada")
-      router.push("/dashboard/grades")
+      router.push(returnTo)
       router.refresh()
     } catch (error) {
       console.error("Error submitting grade:", error)
@@ -421,7 +423,7 @@ export function GradingInterface({
     <div className="space-y-6">
       <div>
         <Button asChild variant="ghost" className="mb-4">
-          <Link href="/dashboard/grades">
+          <Link href={returnTo}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver a Calificaciones
           </Link>

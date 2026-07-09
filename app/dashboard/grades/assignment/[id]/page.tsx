@@ -11,6 +11,19 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import type { GradingDataResponse } from "@/lib/api-types"
 
+const DEFAULT_RETURN_TO = "/dashboard/grades"
+
+const getSafeReturnTo = () => {
+  if (typeof window === "undefined") return DEFAULT_RETURN_TO
+
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo")
+  if (returnTo === DEFAULT_RETURN_TO || returnTo?.startsWith(`${DEFAULT_RETURN_TO}?`)) {
+    return returnTo
+  }
+
+  return DEFAULT_RETURN_TO
+}
+
 export default function GradingPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -19,6 +32,11 @@ export default function GradingPage() {
 
   const [gradingData, setGradingData] = useState<GradingDataResponse | null>(null)
   const [loadingData, setLoadingData] = useState(true)
+  const [returnTo, setReturnTo] = useState(DEFAULT_RETURN_TO)
+
+  useEffect(() => {
+    setReturnTo(getSafeReturnTo())
+  }, [])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -72,7 +90,7 @@ export default function GradingPage() {
       <div className="bg-gray-100">
         <div className="container mx-auto p-6">
           <Button asChild variant="ghost" className="mb-4">
-            <Link href="/dashboard/grades">
+            <Link href={returnTo}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Volver a Calificaciones
             </Link>
@@ -98,6 +116,7 @@ export default function GradingPage() {
           existingGrade={gradingData.existingGrade}
           teacherId={user.id}
           examEvents={gradingData.events}
+          returnTo={returnTo}
         />
       </div>
     </div>

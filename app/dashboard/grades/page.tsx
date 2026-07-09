@@ -34,6 +34,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
+const GRADES_PATH = "/dashboard/grades"
+
 // Final grade labels for 2-5 scale
 const FINAL_GRADE_LABELS: Record<FinalGrade, { label: string; color: string; bg: string }> = {
   2: { label: "Reprobado", color: "text-red-600", bg: "bg-red-50" },
@@ -76,6 +78,7 @@ export default function GradesPage() {
   // Cascade filters
   const [selectedCareer, setSelectedCareer] = useState<string>("")
   const [selectedGroup, setSelectedGroup] = useState<string>("")
+  const [hasHydratedUrlState, setHasHydratedUrlState] = useState(false)
 
   // Additional filters
   const [search, setSearch] = useState("")
@@ -94,6 +97,16 @@ export default function GradesPage() {
       loadGroups()
     }
   }, [user])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const career = params.get("career") || ""
+    const group = params.get("group") || ""
+
+    setSelectedCareer(career)
+    setSelectedGroup(group)
+    setHasHydratedUrlState(true)
+  }, [])
 
   // Load assignments when group changes
   useEffect(() => {
@@ -120,9 +133,11 @@ export default function GradesPage() {
     setIsLoading(true)
     try {
       // Fetch assignments for grading - need two separate calls since API only accepts single status
+      const submittedParams = new URLSearchParams({ status: "submitted", groupId: selectedGroup })
+      const gradedParams = new URLSearchParams({ status: "graded", groupId: selectedGroup })
       const [submittedRes, gradedRes] = await Promise.all([
-        authFetch("/api/assignments?status=submitted"),
-        authFetch("/api/assignments?status=graded"),
+        authFetch(`/api/assignments?${submittedParams.toString()}`),
+        authFetch(`/api/assignments?${gradedParams.toString()}`),
       ])
       const [submittedData, gradedData] = await Promise.all([
         submittedRes.json(),
@@ -234,15 +249,36 @@ export default function GradesPage() {
     return filteredAndSortedAssignments.slice(start, start + itemsPerPage)
   }, [filteredAndSortedAssignments, currentPage, itemsPerPage])
 
+  const gradesReturnHref = useMemo(() => {
+    const params = new URLSearchParams()
+    if (selectedCareer) params.set("career", selectedCareer)
+    if (selectedGroup) params.set("group", selectedGroup)
+
+    const query = params.toString()
+    return query ? `${GRADES_PATH}?${query}` : GRADES_PATH
+  }, [selectedCareer, selectedGroup])
+
+  useEffect(() => {
+    if (!hasHydratedUrlState) return
+
+    window.history.replaceState(null, "", gradesReturnHref)
+  }, [gradesReturnHref, hasHydratedUrlState])
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [search, statusFilter, itemsPerPage])
 
-  // Reset cascade when parent changes
-  useEffect(() => {
+  const handleCareerChange = (career: string) => {
+    setSelectedCareer(career)
     setSelectedGroup("")
-  }, [selectedCareer])
+    setCurrentPage(1)
+  }
+
+  const handleGroupChange = (groupId: string) => {
+    setSelectedGroup(groupId)
+    setCurrentPage(1)
+  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -314,7 +350,7 @@ export default function GradesPage() {
                 <GraduationCap className="h-3.5 w-3.5" />
                 1. Carrera
               </label>
-              <Select value={selectedCareer} onValueChange={setSelectedCareer}>
+              <Select value={selectedCareer} onValueChange={handleCareerChange}>
                 <SelectTrigger className="bg-white border-gray-200">
                   <SelectValue placeholder="Selecciona una carrera" />
                 </SelectTrigger>
@@ -336,7 +372,7 @@ export default function GradesPage() {
               </label>
               <Select
                 value={selectedGroup}
-                onValueChange={setSelectedGroup}
+                onValueChange={handleGroupChange}
                 disabled={!selectedCareer}
               >
                 <SelectTrigger className={`bg-white border-gray-200 ${!selectedCareer ? "opacity-50" : ""}`}>
@@ -508,7 +544,7 @@ export default function GradesPage() {
                   {paginatedAssignments.map((assignment, index) => (
                     <Link
                       key={assignment.id}
-                      href={`/dashboard/grades/assignment/${assignment.id}`}
+                      href={`/dashboard/grades/assignment/${assignment.id}?returnTo=${encodeURIComponent(gradesReturnHref)}`}
                       className={`grid grid-cols-12 gap-2 px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${
                         index % 2 === 0 ? "bg-white" : "bg-gray-50/30"
                       }`}
